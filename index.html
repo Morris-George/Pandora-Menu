@@ -18,7 +18,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .tile{background:var(--card);border:1px solid var(--line);border-radius:14px;min-height:150px;padding:16px;text-align:left;display:flex;flex-direction:column;justify-content:flex-end;position:relative;overflow:hidden}
 .tile svg{position:absolute;right:10px;top:10px;width:84px;height:84px;stroke:var(--line);fill:none;stroke-width:3}
-.tile .sm{position:absolute;right:10px;top:10px;width:92px;height:92px;border-radius:12px;object-fit:contain;background:#fff}.tile.w .sm{top:14px;right:14px;width:100px;height:100px}.tile.w{grid-column:span 2;min-height:130px}.tile small{color:var(--mute);font:italic 400 12.5px/1.35 Lora,Georgia,serif;margin-top:3px}
+.tile .sm{position:absolute;right:10px;top:10px;width:92px;height:92px;border-radius:12px;object-fit:cover;background:#fff}.tile.w .sm{top:14px;right:14px;width:100px;height:100px}.tile.w{grid-column:span 2;min-height:130px}.tile small{color:var(--mute);font:italic 400 12.5px/1.35 Lora,Georgia,serif;margin-top:3px}
 .foot{display:flex;justify-content:space-between;margin-top:auto;padding-top:22px;font-size:13px}
 .ul{border-bottom:2px solid var(--pink);padding-bottom:2px}.mute{color:var(--mute)}
 .opt{display:flex;justify-content:space-between;align-items:center;width:100%;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:15px 16px;margin-bottom:10px;text-align:left}
@@ -49,17 +49,21 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .lab{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);margin:16px 0 8px}
 .ok{color:#3f8f63;font-size:13px;margin:14px 0 6px}.no{color:var(--mute);font-size:13px;margin:14px 0 6px}
 a{color:var(--mute);font-size:12px}
+.tile,.tile.w{min-height:0;justify-content:flex-start;padding:12px 12px 16px}
+.tile .sm,.tile.w .sm{position:relative;z-index:1;display:block;left:auto;right:auto;top:auto;bottom:auto;width:100%;height:auto;aspect-ratio:1/1;object-fit:cover;border-radius:12px;margin-bottom:14px}
+.tile.w .sm{width:52%;margin:0 auto 14px}
+.tile:has(.sm) svg{display:none}
 @media (min-width:800px){
 #app{max-width:1180px;padding:104px 56px 110px}
 h1{font-size:40px}
 .grid{grid-template-columns:repeat(5,1fr);gap:18px}
-.grid{flex:1;max-height:760px;grid-auto-rows:1fr;margin-bottom:10px}
-.tile,.tile.w{grid-column:auto;min-height:300px;padding:20px}
+.cw{justify-content:center}
+.tile,.tile.w{grid-column:auto;min-height:0;justify-content:flex-start;padding:12px 12px 16px}
 .tile svg{left:50%;right:auto;top:60px;transform:translateX(-50%)}
-.tile .sm,.tile.w .sm{left:12px;right:12px;top:12px;bottom:104px;width:auto;height:auto;border-radius:12px}
+.tile .sm,.tile.w .sm{position:relative;z-index:1;display:block;left:auto;right:auto;top:auto;bottom:auto;width:100%;height:auto;aspect-ratio:1/1;object-fit:cover;border-radius:12px;margin-bottom:14px}
 .tile.w svg{top:60px!important;right:auto!important}
 .tile{font-size:16px}.tile small{font-size:13.5px}
-.foot{justify-content:center;gap:40px}
+.foot{justify-content:center;gap:40px;margin-top:34px;padding-top:0}
 .nar{width:100%;max-width:820px;margin:0 auto;flex:1;justify-content:center;display:flex;flex-direction:column}.nar h1{font-size:46px;margin:12px 0 26px}.nar .opt{padding:22px 24px;font-size:18px}.nar .opt small{font-size:13px}.nar .chip{font-size:16px;padding:12px 20px}.nar .btn{padding:15px 40px;font-size:16px}.nar .top{font-size:15px}
 .opts{display:grid;grid-template-columns:1fr 1fr;gap:12px}.opts .opt{margin-bottom:0}
 .cards{grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:18px}
@@ -246,7 +250,7 @@ $("app").addEventListener("click",e=>{const b=e.target.closest("[data-s]");if(!b
 const LOGO=h=>`<svg width="${Math.round(h*1433/2005)}" height="${h}" viewBox="0 0 1433 2005" aria-hidden="true"><g fill="currentColor"><path d="M462 60l12-5 129 295-82 20zM676 347L708 0h14l34 347zM968 60l-12-5-128 295 82 20z"/><circle cx="581" cy="452" r="47"/><circle cx="715" cy="440" r="47"/><circle cx="848" cy="452" r="47"/><path fill-rule="evenodd" d="M716 565a716 720 0 1 0 .1 0zM717 794a462 489 0 1 1-.1 0z"/></g></svg>`;
 function V(){const a=S.scr;
  if(a=="welcome")return`<div class="fade" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;cursor:pointer"><div style="color:var(--ink)">${LOGO(120)}</div><div class="brand" style="font-size:22px;margin:22px 0 28px;letter-spacing:.4em">PANDORA</div><div style="width:60px;border-top:2px solid var(--pink)"></div><h1 style="margin-top:34px;font-size:23px;letter-spacing:.02em">Discover Pandora</h1><div class="mute" style="font-size:11px;letter-spacing:.14em;margin-top:26px;opacity:.8">TAP ANYWHERE TO BEGIN</div></div>`;
- if(a=="cats")return`<div class="fade" style="flex:1;display:flex;flex-direction:column"><h1>What are you<br>looking for?</h1><div class="grid">${[0,1,2,3].map(i=>`<button class="tile" data-a="cat" data-v="${i}"><svg viewBox="0 0 84 84">${IC[i]}</svg>${smp(i)}${CATS[i][1]}<small>${TAG[i]}</small></button>`).join("")}<button class="tile w" data-a="cat" data-v="4"><svg viewBox="0 0 84 84" style="top:30px;right:22px">${IC[4]}</svg>${smp(4)}Charms<small>${TAG[4]}</small></button></div><div class="foot"><button class="ul" data-a="cat" data-v="all">Not sure? Help me choose</button><button class="mute" data-a="start">Start over</button></div></div>`;
+ if(a=="cats")return`<div class="fade cw" style="flex:1;display:flex;flex-direction:column"><h1>What are you<br>looking for?</h1><div class="grid">${[0,1,2,3].map(i=>`<button class="tile" data-a="cat" data-v="${i}"><svg viewBox="0 0 84 84">${IC[i]}</svg>${smp(i)}${CATS[i][1]}<small>${TAG[i]}</small></button>`).join("")}<button class="tile w" data-a="cat" data-v="4"><svg viewBox="0 0 84 84" style="top:30px;right:22px">${IC[4]}</svg>${smp(4)}Charms<small>${TAG[4]}</small></button></div><div class="foot"><button class="ul" data-a="cat" data-v="all">Not sure? Help me choose</button><button class="mute" data-a="start">Start over</button></div></div>`;
  if(a=="finder"){const n=S.step,cn=S.cat==null?"Categories":CATS[S.cat][1].replace(" & pendants","");const Q=[["Who are you<br>shopping for?"],["What's the<br>occasion?"],[`What's ${S.q.who=="him"?"his":S.q.who=="me"?"your":S.q.who=="her"?"her":"the"}<br>style?`],["What's your<br>budget?"]][n][0];
   const o=n==0?WHO.map(([k,l,s])=>[k,l,s,S.q.who==k]):n==1?OCC.map(([k,l])=>[k,l,"",S.q.occ.includes(k)]):n==2?STY.map(([k,l,s])=>[k,l,s,S.q.style==k]):BUD.map(([k,l])=>[k,l,"",S.q.bud==k]);
   const body=n==1?`<div class="chips">${o.map(x=>`<button class="chip ${x[3]?"on":""}" data-a="pick" data-v="${x[0]}">${x[1]}</button>`).join("")}</div><div class="mute" style="font-size:12px">Pick as many as you like.</div>`:o.map(x=>`<button class="opt ${x[3]?"on":""}" data-a="pick" data-v="${x[0]}"><span>${x[1]}</span><small>${x[2]||""}</small></button>`).join("");const bodyW=n==1?body:`<div class="opts">${body}</div>`;
