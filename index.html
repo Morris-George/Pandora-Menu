@@ -270,7 +270,7 @@ function V(){const a=S.scr;
 let LS=null;$("hdr").innerHTML=`${LOGO(34)}<span>PANDORA</span>`;function R(){const ch=LS!==S.scr,y=window.scrollY;LS=S.scr;const ap=$("app");ap.classList.toggle("na",!ch);ap.innerHTML=V();$("hdr").hidden=S.scr=="welcome";window.scrollTo(0,ch?0:y)}document.addEventListener("click",e=>{if(S.scr=="welcome"&&!e.target.closest("[data-a]"))go("store")});
 const go=s=>{S.scr=s;S.am=false;R()};
 $("app").addEventListener("click",e=>{const b=e.target.closest("[data-a]");if(!b)return;const a=b.dataset.a,v=b.dataset.v;
- if(a=="start"){S.srch="";S.list={};S.ref=null;save();S.q={who:null,occ:[],style:null,bud:null};S.cat=null;S.form=null;S.skip=false;S.n=8;go("welcome")}
+ if(a=="start"){S.srch="";S.store=null;S.list={};S.ref=null;save();S.q={who:null,occ:[],style:null,bud:null};S.cat=null;S.form=null;S.skip=false;S.n=8;go("welcome")}
  else if(a=="cats")go("cats");
  else if(a=="welcome")go("welcome");
  else if(a=="store"){S.store=v;go("cats")}
