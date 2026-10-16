@@ -38,7 +38,8 @@ module.exports = async function handler(req, res) {
         'Content-Type': 'application/json',
         Accept: 'application/json'
       },
-      body: JSON.stringify({ report_name: REPORT, filters: { from_date: from, to_date: to } }),
+      // a Custom Report with saved filters: are_default_filters:false makes ERPNext use today's dates instead
+      body: JSON.stringify({ report_name: REPORT, filters: { from_date: from, to_date: to }, are_default_filters: false }),
       signal: AbortSignal.timeout(25000)
     });
     if (!r.ok) throw new Error('ERP answered ' + r.status);
