@@ -121,7 +121,7 @@ function ranked(){let L=D.filter(p=>S.cat==null||p.c==S.cat),q=S.q,sk=S.skip;
   if(!sk){
   if(q.who=="him"){s+=p.g?8:-2;if(!p.g&&!isUni(p))m=false;else ct++}else if(q.who=="her"||q.who=="me")s+=p.g?-1:1;
   if(q.mat&&MT[q.mat]){if(MT[q.mat](p)){s+=8;ct++}else m=false}
-  if(oc.length){const hit=oc.some(o=>(OM[o]||[]).some(x=>p.o.includes(x))||(o=="Mother's Day"&&p.h.includes("Family and Friends"))||(OX[o]&&OX[o](p)));if(hit){s+=6;ct++}else m=false}
+  if(oc.length){const hit=oc.some(o=>(OM[o]||[]).some(x=>p.o.includes(x))||(o=="Mother's Day"&&p.h.includes("Family and Friends"))||(OX[o]&&OX[o](p)));if(hit){s+=6;ct++;if(oc.includes('Birthday')&&BDX.test(p.n.toLowerCase())){s+=15;if(/birthday|cake/.test(p.n.toLowerCase()))s+=10}}else m=false}
   if(st&&st[3]){if(st[3].test(tx)){s+=5;ct++}else m=false}
   if(bd&&bd[2]!=null){const d=p.p<bd[2]?bd[2]-p.p:p.p>=bd[3]?p.p-bd[3]+1:0;if(d){s-=Math.min(30,d/400);m=false}else{s+=4;ct++}}}
   if(p.w)s+=.5;return[p,s+ct*20,m]}).sort((a,b)=>(b[2]-a[2])||b[1]-a[1]||a[0].p-b[0].p);
