@@ -97,6 +97,8 @@ const WHO=[["her","A gift for her"],["him","A gift for him"],["me","Something fo
 const OCC=[["Birthday","Birthday"],["Engagement","Engagement"],["Anniversary","Anniversary"],["Graduation","Graduation"],["Christmas","Christmas"],["Halloween","Halloween"],["Travel","Travel"],["New pet","New pet"],["Mother's Day","Mother's Day"],["New baby","New baby"],["none","No occasion"]];
 const HW=/halloween|pumpkin|ghost|\bboo\b|skull|coffin|black cat|skellington|scarecrow|haunted|glow/;const MAT=[["silver","Silver 925"],["gold","Gold Plated"],["rose","Rose Gold Plated"],["leather","Leather"],["any","No preference"]];
 const isLeather=p=>p.x.includes("Leather")||/leather/i.test(p.n);
+const UNI_RE=[/avengers|marvel|stranger things/,/braided/,/^(twisted )?snake chain (sterling silver |silver |14k (rose )?gold-plated )?bracelet$|^14k (rose )?gold-plated snake chain bracelet$|round clasp|circle clasp/,/^beaded sterling silver bracelet/,/link bracelet|openable links/];
+const isUni=p=>{if(p.c!=0)return false;if(isLeather(p))return true;const n=p.n.toLowerCase().trim();if(UNI_RE[0].test(n)||UNI_RE[3].test(n)||UNI_RE[2].test(n))return true;if(/heart/.test(n))return false;if(UNI_RE[1].test(n)&&(/gold-plated/.test(n)||/(black|blue|turquoise) textile cord/.test(n)))return true;return false};
 const MT={silver:p=>p.m=="Silver"&&!isLeather(p),gold:p=>p.m=="Gold"&&!isLeather(p),rose:p=>p.m=="Rose"&&!isLeather(p),leather:isLeather};
 const FS=()=>S.cat==0?["who","mat","occ","style","bud"]:["who","occ","style","bud"];
 const OX={Halloween:p=>HW.test(tx(p)),Christmas:p=>/christmas|snow|santa|winter|reindeer|gingerbread/.test(tx(p)),Travel:p=>p.h.includes("Travel and Hobbies"),"New pet":p=>p.h.includes("Animals and Pets")};const OM={Birthday:["Birthday"],Engagement:["Engagement & Bridal"],Anniversary:["Anniversary"],Graduation:["Graduation"],Eid:["Celebration"],"Mother's Day":["New Baby"],"New baby":["New Baby"]};
@@ -117,7 +119,7 @@ function ranked(){let L=D.filter(p=>S.cat==null||p.c==S.cat),q=S.q,sk=S.skip;
  const st=STY.find(x=>x[0]==q.style),bd=BUD.find(x=>x[0]==q.bud),oc=q.occ.filter(x=>x!="none");
  L=L.map(p=>{let s=p.s?100:0,m=!!p.s;const tx=(p.n+" "+p.h.join(" ")+" "+p.x.join(" ")).toLowerCase();
   if(!sk){
-  if(q.who=="him"){s+=p.g?8:-2;if(!p.g&&!isLeather(p))m=false}else if(q.who=="her"||q.who=="me")s+=p.g?-1:1;
+  if(q.who=="him"){s+=p.g?8:-2;if(!p.g&&!isUni(p))m=false}else if(q.who=="her"||q.who=="me")s+=p.g?-1:1;
   if(q.mat&&MT[q.mat]){if(MT[q.mat](p))s+=8;else m=false}
   if(oc.length){const hit=oc.some(o=>(OM[o]||[]).some(x=>p.o.includes(x))||(o=="Mother's Day"&&p.h.includes("Family and Friends"))||(OX[o]&&OX[o](p)));if(hit)s+=6;else m=false}
   if(st&&st[3]){if(st[3].test(tx))s+=5;else m=false}
