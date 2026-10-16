@@ -122,7 +122,7 @@ function ranked(){let L=D.filter(p=>S.cat==null||p.c==S.cat),q=S.q,sk=S.skip;
   if(oc.length){const hit=oc.some(o=>(OM[o]||[]).some(x=>p.o.includes(x))||(o=="Mother's Day"&&p.h.includes("Family and Friends"))||(OX[o]&&OX[o](p)));if(hit)s+=6;else m=false}
   if(st&&st[3]){if(st[3].test(tx))s+=5;else m=false}
   if(bd&&bd[2]!=null){const d=p.p<bd[2]?bd[2]-p.p:p.p>=bd[3]?p.p-bd[3]+1:0;if(d){s-=Math.min(30,d/400);m=false}else s+=4}}
-  if(p.w)s+=.5;return[p,s,m]}).sort((a,b)=>(b[2]-a[2])||b[1]-a[1]||a[0].p-b[0].p);
+  if(st&&st[0]=="disney"&&!sk)m=!!p.s&&st[3].test(tx);if(p.w)s+=.5;return[p,s,m]}).sort((a,b)=>(b[2]-a[2])||b[1]-a[1]||a[0].p-b[0].p);
  const r=L.map(x=>x[0]);r.k=sk?r.length:L.filter(x=>x[2]).length;return r}
 const nw=n=>n>=1&&n<=8?NUM[n]:String(n);function heading(){if(!S.skip&&S.k==0)return"No exact match — closest "+catName();const o=S.q.occ.filter(x=>x!="none")[0],a={Birthday:"a birthday",Engagement:"an engagement",Anniversary:"an anniversary",Graduation:"a graduation",Christmas:"Christmas",Halloween:"Halloween",Travel:"travel","New pet":"a new pet","Mother's Day":"Mother's Day","New baby":"a new baby"};
  const w=S.q.who=="him"?" for him":S.q.who=="her"?" for her":"";return `${nw(S.skip?S.tot:S.k)} ${catName()}`+(!S.skip&&o?` for ${a[o]}`:w)}
