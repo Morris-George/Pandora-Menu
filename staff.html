@@ -43,6 +43,9 @@ iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:var(
 .q{overflow:auto;padding:14px;border-right:1px solid var(--line)}
 .seg{display:flex;gap:6px;margin:2px 2px 14px}.seg button{flex:1;padding:10px 12px;border-radius:99px;border:1px solid var(--line);background:var(--card);font-size:13.5px;color:var(--mute)}.seg button.on{background:var(--soft);border-color:var(--pink);color:var(--ink)}
 .st.d{background:var(--okbg);color:var(--ok)}
+.rng{display:flex;gap:6px;flex-wrap:wrap;margin:0 2px 12px}.rng button{padding:7px 12px;border-radius:99px;border:1px solid var(--line);background:var(--card);font-size:12.5px;color:var(--mute)}.rng button.on{background:var(--soft);border-color:var(--pink);color:var(--ink)}
+.rng input{font:inherit;font-size:12.5px;padding:6px 10px;border-radius:99px;border:1px solid var(--line);background:var(--card);color:var(--ink);min-width:0}.rng input.on{background:var(--soft);border-color:var(--pink)}
+.cnt{font-size:12px;color:var(--mute);margin:0 4px 10px}
 .card{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:10px}
 .card.sel{border-color:var(--pink);box-shadow:0 0 0 1px var(--pink)}
 .num{width:56px;height:56px;border-radius:12px;background:var(--soft);color:#72243e;font:500 20px/1 Poppins;display:flex;align-items:center;justify-content:center;flex:none}
@@ -86,12 +89,24 @@ const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",
 const fmt=n=>"EGP "+Math.round(n).toLocaleString("en-US");
 const LOCK_AFTER=5*60*1000, POLL=15000;
 
-let A={token:null,store:null,tab:"inbox",locked:true,orders:[],sel:null,known:null,unseen:new Set(),fresh:new Set(),pin:"",err:"",busy:false,offline:false,lastTouch:Date.now(),menuFor:null,view:"waiting",done:[],doneBusy:false};
+let A={token:null,store:null,tab:"inbox",locked:true,orders:[],sel:null,known:null,unseen:new Set(),fresh:new Set(),pin:"",err:"",busy:false,offline:false,lastTouch:Date.now(),menuFor:null,view:"waiting",done:[],doneBusy:false,range:"today",day:""};
 const cur=()=>A.view=="done"?A.done:A.orders;
 
 const LOGO=h=>`<svg width="${Math.round(h*1433/2005)}" height="${h}" viewBox="0 0 1433 2005" aria-hidden="true"><use href="#lg"/></svg>`;
 
 function ago(t){const m=Math.floor((Date.now()-t)/60000);if(m<1)return"just now";if(m<60)return m+" min ago";const h=Math.floor(m/60);return h<24?h+" h ago":Math.floor(h/24)+" d ago"}
+const CF=new Intl.DateTimeFormat("en-CA",{timeZone:"Africa/Cairo",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23"});
+function cp(t){const o={};CF.formatToParts(new Date(t)).forEach(p=>o[p.type]=p.value);return o}
+function cday(t){const p=cp(t);return p.year+"-"+p.month+"-"+p.day}
+function dayStart(ds){const[y,m,d]=ds.split("-").map(Number);for(const off of[3,2]){const t=Date.UTC(y,m-1,d)-off*3600000,p=cp(t);if(p.year+"-"+p.month+"-"+p.day==ds&&p.hour=="00"&&p.minute=="00")return t}return Date.UTC(y,m-1,d)-2*3600000}
+function rangeQS(){
+  const now=Date.now(),t0=dayStart(cday(now));
+  if(A.range=="today")return"&from="+t0;
+  if(A.range=="yesterday")return"&from="+dayStart(cday(t0-12*3600000))+"&to="+(t0-1);
+  if(A.range=="7d")return"&from="+dayStart(cday(now-6*86400000));
+  if(A.range=="day"&&A.day){const s=dayStart(A.day);return"&from="+s+"&to="+(dayStart(cday(s+30*3600000))-1)}
+  return"";
+}
 function dwhen(t){const f={day:"numeric",month:"short",timeZone:"Africa/Cairo"},d=new Date(t).toLocaleDateString("en-GB",f),n=new Date().toLocaleDateString("en-GB",f);return(d==n?"Today":d)+" "+clock(t)}
 function clock(t){return new Date(t).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit",timeZone:"Africa/Cairo"})}
 
@@ -123,13 +138,18 @@ function detailHTML(o){
 function listHTML(){
   const L=cur();
   if(A.view=="done"&&A.doneBusy&&!L.length)return `<div class="empty">Loading…</div>`;
-  if(!L.length)return A.view=="done"?`<div class="empty">No finished lists yet.<br>Lists you mark done show up here for 30 days.</div>`:`<div class="empty">No lists waiting.<br>New ones show up here by themselves.</div>`;
-  return L.map(o=>`<button class="card ${A.sel==o.id?"sel":""} ${A.fresh.has(o.id)?"fresh":""}" data-open="${esc(o.id)}"><div class="num">${esc(o.number)}</div><div class="who"><b>${esc(o.name)}</b><small>${o.itemCount} piece${o.itemCount==1?"":"s"} · ${o.status=="done"?"done "+dwhen(o.doneAt||o.at):ago(o.at)}</small></div><span class="st ${o.status=="serving"?"s":o.status=="done"?"d":""}">${o.status=="serving"?"Being served":o.status=="done"?"Done":"New"}</span></button>`).join("");
+  if(!L.length)return A.view=="done"?`<div class="empty">No finished lists for this date.<br>Lists you mark done are kept for 30 days.</div>`:`<div class="empty">No lists waiting.<br>New ones show up here by themselves.</div>`;
+  return (A.view=="done"?`<div class="cnt">${L.length} finished</div>`:"")+L.map(o=>`<button class="card ${A.sel==o.id?"sel":""} ${A.fresh.has(o.id)?"fresh":""}" data-open="${esc(o.id)}"><div class="num">${esc(o.number)}</div><div class="who"><b>${esc(o.name)}</b><small>${o.itemCount} piece${o.itemCount==1?"":"s"} · ${o.status=="done"?"done "+dwhen(o.doneAt||o.at):ago(o.at)}</small></div><span class="st ${o.status=="serving"?"s":o.status=="done"?"d":""}">${o.status=="serving"?"Being served":o.status=="done"?"Done":"New"}</span></button>`).join("");
+}
+function rangeHTML(){
+  const R=[["today","Today"],["yesterday","Yesterday"],["7d","Last 7 days"],["30d","Last 30 days"]];
+  const now=Date.now();
+  return `<div class="rng">${R.map(([k,l])=>`<button data-range="${k}" class="${A.range==k?"on":""}">${l}</button>`).join("")}<input type="date" id="dday" class="${A.range=="day"?"on":""}" value="${esc(A.day)}" min="${cday(now-30*86400000)}" max="${cday(now)}" aria-label="Pick a day"></div>`;
 }
 function inboxView(){
   if(A.locked)return pinView("Inbox is locked","Enter your store PIN to see the lists");
   const sel=cur().find(o=>o.id==A.sel);
-  return `<div class="inbox"><div class="q"><div class="seg"><button data-view="waiting" class="${A.view=="done"?"":"on"}">Waiting · <span id="wc">${A.orders.length}</span></button><button data-view="done" class="${A.view=="done"?"on":""}">Done</button></div><div id="ql">${listHTML()}</div></div><div class="det" id="dt">${detailHTML(sel)}</div></div>`;
+  return `<div class="inbox"><div class="q"><div class="seg"><button data-view="waiting" class="${A.view=="done"?"":"on"}">Waiting · <span id="wc">${A.orders.length}</span></button><button data-view="done" class="${A.view=="done"?"on":""}">Done</button></div>${A.view=="done"?rangeHTML():""}<div id="ql">${listHTML()}</div></div><div class="det" id="dt">${detailHTML(sel)}</div></div>`;
 }
 function render(){
   const r=$("root");
@@ -202,17 +222,18 @@ async function loadDone(){
   if(!A.token)return;
   A.doneBusy=true;
   try{
-    const{r,j}=await api("/api/inbox?view=done");
+    const{r,j}=await api("/api/inbox?view=done"+rangeQS());
     if(r.status==401){A.token=null;A.store=null;A.known=null;A.v=null;A.pin="";A.err="Session ended. Enter your PIN again.";return render()}
     if(!r.ok||!j.ok)throw 0;
     A.done=j.orders;A.offline=false;
+    if(A.sel&&!A.done.some(o=>o.id==A.sel))A.sel=null;
     if(A.view=="done"&&!A.sel&&A.done.length&&window.innerWidth>760)A.sel=A.done[0].id;
   }catch(e){}
   A.doneBusy=false;refresh();
 }
 function setView(v){
   if(A.view==v)return;
-  A.view=v;A.sel=null;
+  A.view=v;A.sel=null;if(v=="done"){A.range="today";A.day=""}
   const ib=$("ib");if(ib)ib.innerHTML=inboxView();
   if(v=="done"){loadDone()}
   else{A.done=[];if(A.orders.length&&window.innerWidth>760)A.sel=A.orders[0].id;refresh()}
@@ -251,6 +272,8 @@ document.addEventListener("click",e=>{
     if(A.pin.length==6)login();return}
   const tab=e.target.closest("[data-tab]");
   if(tab){A.tab=tab.dataset.tab;if(A.tab=="inbox"&&!A.locked){A.unseen.clear();if(!A.sel&&A.orders.length&&window.innerWidth>760)A.sel=A.orders[0].id}A.pin="";A.err="";render();return}
+  const rg=e.target.closest("[data-range]");
+  if(rg){A.range=rg.dataset.range;A.day="";A.sel=null;A.done=[];const ib=$("ib");if(ib)ib.innerHTML=inboxView();loadDone();return}
   const vw=e.target.closest("[data-view]");
   if(vw){setView(vw.dataset.view);return}
   const op=e.target.closest("[data-open]");
@@ -262,6 +285,9 @@ document.addEventListener("click",e=>{
     else if(a=="done")setStatus(act.dataset.id,"done");
     else if(a=="openban"){$("ban").classList.remove("show");A.tab="inbox";A.pin="";render()}
   }
+});
+document.addEventListener("change",e=>{
+  if(e.target&&e.target.id=="dday"&&e.target.value){A.range="day";A.day=e.target.value;A.sel=null;A.done=[];const ib=$("ib");if(ib)ib.innerHTML=inboxView();loadDone()}
 });
 document.addEventListener("keydown",e=>{
   if(A.token&&!(A.locked&&A.tab=="inbox"))return;

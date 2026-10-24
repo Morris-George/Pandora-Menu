@@ -1,6 +1,6 @@
 // The staff Inbox for the store the token belongs to - never any other store.
 //   GET /api/inbox?v=<version>   (Authorization: Bearer <token>)  ->  {ok, store, v, orders:[...]}  or {ok, unchanged:true} when nothing changed
-//   GET /api/inbox?view=done     ->  the store's finished lists, newest first (kept 30 days)
+//   GET /api/inbox?view=done[&from=<ms>&to=<ms>]  ->  the store's finished lists in that finish-time window, newest first (kept 30 days, max 200)
 const { redis, send, tokenStore, pad3 } = require('./_lib');
 
 const shape = o => ({ id: o.id, number: pad3(o.n), name: o.name, phone: o.phone, items: o.items, itemCount: o.itemCount, total: o.total, status: o.status, at: o.at, servingAt: o.servingAt || null, doneAt: o.doneAt || null });
@@ -12,7 +12,9 @@ module.exports = async function handler(req, res) {
     let q; try { q = new URL(req.url, 'http://x').searchParams; } catch (e) { q = new URLSearchParams(); }
 
     if (q.get('view') === 'done') {
-      const ids = await redis(['ZREVRANGE', `pm:d:${store}`, 0, 99]);
+      const num = (k, d) => { const x = Number(q.get(k)); return q.get(k) && Number.isFinite(x) ? x : d; };
+      const from = Math.max(0, num('from', 0)), to = num('to', Infinity);
+      const ids = await redis(['ZREVRANGEBYSCORE', `pm:d:${store}`, to === Infinity ? '+inf' : String(to), String(from), 'LIMIT', 0, 200]); // by the time each list was finished
       const orders = [];
       if (ids && ids.length) {
         const vals = await redis(['MGET', ...ids.map(id => `pm:o:${store}:${id}`)]);

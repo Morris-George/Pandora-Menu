@@ -10,8 +10,8 @@ const STORES = ['CFC', 'Point 90', 'City Centre Almaza', 'City Stars', 'Mall Of 
 const RETAIN_SECONDS = 30 * 24 * 3600; // submitted lists are kept 30 days, then Redis deletes them
 const SESSION_MS = 12 * 3600 * 1000;
 
-// Cairo calendar date (UTC+2, as in stock.js). Order numbers restart at 001 at 12:00 AM Cairo time.
-const cairoDate = () => new Date(Date.now() + 2 * 3600 * 1000).toISOString().slice(0, 10);
+// Cairo calendar date. Order numbers restart at 001 at 12:00 AM Cairo time.
+const cairoDate = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Cairo' }); // YYYY-MM-DD in real Cairo time, so summer/winter time shifts are handled
 
 function redisConf() {
   const url = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
