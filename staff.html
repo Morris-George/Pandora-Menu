@@ -83,7 +83,7 @@ const B="https://cdn.shopify.com/s/files/1/0707/6066/1191/files/";
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const fmt=n=>"EGP "+Math.round(n).toLocaleString("en-US");
-const LOCK_AFTER=5*60*1000, POLL=4000;
+const LOCK_AFTER=5*60*1000, POLL=15000;
 
 let A={token:null,store:null,tab:"inbox",locked:true,orders:[],sel:null,known:null,unseen:new Set(),fresh:new Set(),pin:"",err:"",busy:false,offline:false,lastTouch:Date.now(),menuFor:null,inboxFilter:"all"};
 
@@ -165,12 +165,14 @@ async function api(path,opt={}){
   return{r,j};
 }
 async function poll(){
-  if(!A.token)return;
+  if(!A.token||document.hidden)return;
   try{
-    const{r,j}=await api("/api/inbox");
-    if(r.status==401){A.token=null;A.store=null;A.known=null;A.pin="";A.err="Session ended. Enter your PIN again.";return render()}
+    const{r,j}=await api("/api/inbox?v="+encodeURIComponent(A.v||""));
+    if(r.status==401){A.token=null;A.store=null;A.known=null;A.v=null;A.pin="";A.err="Session ended. Enter your PIN again.";return render()}
     if(!r.ok||!j.ok)throw 0;
     A.offline=false;
+    if(j.unchanged){const off=document.querySelector(".net");if(off)off.remove();return}
+    A.v=j.v;
     const ids=new Set(j.orders.map(o=>o.id));
     if(A.known){
       const fresh=j.orders.filter(o=>!A.known.has(o.id));
@@ -197,6 +199,7 @@ async function login(){
     if(!r.ok||!j.ok){A.err=j.error||"Could not check the PIN.";A.pin="";A.busy=false;return A.token?refreshPin():render()}
     const changed=A.store!==j.store;
     A.token=j.token;A.store=j.store;A.locked=false;A.pin="";A.err="";A.busy=false;A.lastTouch=Date.now();
+    A.v=null;
     if(changed){A.known=null;A.orders=[];A.sel=null;A.unseen.clear();A.menuFor=j.store}
     if(!A.menuFor)A.menuFor=j.store;
     A.unseen.clear();

@@ -66,6 +66,7 @@ module.exports = async function handler(req, res) {
     const order = { id, n, date, store, name, phone, items, itemCount, total, status: 'new', at };
     await redis(['SET', `pm:o:${store}:${id}`, JSON.stringify(order), 'EX', RETAIN_SECONDS]);
     await redis(['ZADD', `pm:a:${store}`, at, id]); // the store's active Inbox
+    await redis(['INCR', `pm:v:${store}`]); // tells that store's tablets something changed
     if (ck) await redis(['SET', ck, String(n), 'XX', 'EX', 600]);
     return send(res, 200, { ok: true, number: pad3(n), store });
   } catch (e) {

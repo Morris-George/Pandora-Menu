@@ -19,6 +19,7 @@ module.exports = async function handler(req, res) {
     o[status === 'done' ? 'doneAt' : 'servingAt'] = Date.now();
     await redis(['SET', key, JSON.stringify(o), 'KEEPTTL']); // keeps the original 30-day clock
     if (status === 'done') await redis(['ZREM', `pm:a:${store}`, id]);
+    await redis(['INCR', `pm:v:${store}`]);
     return send(res, 200, { ok: true, id, status });
   } catch (e) {
     return send(res, e.status || 502, { ok: false, error: 'Could not update the list.' });

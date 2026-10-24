@@ -6,6 +6,11 @@ module.exports = async function handler(req, res) {
   const store = tokenStore(req);
   if (!store) return send(res, 401, { ok: false, error: 'locked' });
   try {
+    // One cheap read first: the store's change counter. If the tablet already has this version, nothing else is read.
+    const v = String((await redis(['GET', `pm:v:${store}`])) || '0');
+    let have = '';
+    try { have = new URL(req.url, 'http://x').searchParams.get('v') || ''; } catch (e) {}
+    if (have === v) return send(res, 200, { ok: true, store, v, unchanged: true });
     const ids = await redis(['ZRANGE', `pm:a:${store}`, 0, 199]);
     const orders = [];
     if (ids && ids.length) {
@@ -17,7 +22,7 @@ module.exports = async function handler(req, res) {
         orders.push({ id: o.id, number: pad3(o.n), name: o.name, phone: o.phone, items: o.items, itemCount: o.itemCount, total: o.total, status: o.status, at: o.at });
       }
     }
-    return send(res, 200, { ok: true, store, orders });
+    return send(res, 200, { ok: true, store, v, orders });
   } catch (e) {
     return send(res, e.status || 502, { ok: false, error: 'Could not load the Inbox.' });
   }
