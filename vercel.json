@@ -1,0 +1,8 @@
+{
+  "cleanUrls": true,
+  "rewrites": [{ "source": "/staff", "destination": "/staff.html" }],
+  "headers": [
+    { "source": "/staff", "headers": [{ "key": "Cache-Control", "value": "no-store" }, { "key": "X-Robots-Tag", "value": "noindex" }, { "key": "Referrer-Policy", "value": "no-referrer" }] },
+    { "source": "/staff.html", "headers": [{ "key": "Cache-Control", "value": "no-store" }, { "key": "X-Robots-Tag", "value": "noindex" }] }
+  ]
+}
