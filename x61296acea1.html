@@ -114,7 +114,7 @@ function clock(t){return new Date(t).toLocaleTimeString("en-GB",{hour:"2-digit",
 function pinView(title,sub){
   const d=[0,1,2,3,4,5].map(i=>`<i class="${i<A.pin.length?"f":""}"></i>`).join("");
   const k=n=>`<button data-k="${n}">${n}</button>`;
-  return `<div class="pin"><div style="color:var(--ink)">${LOGO(70)}</div><h1>${title}</h1><div class="meta">${sub}</div><div class="dots">${d}</div><div class="err" id="perr">${esc(A.err)}</div><div class="keys">${[1,2,3,4,5,6,7,8,9].map(k).join("")}<button data-k="del" aria-label="Delete">⌫</button>${k(0)}<button data-k="go" class="go" aria-label="Enter">→</button></div></div>`;
+  return `<div class="pin"><div style="color:var(--ink)">${LOGO(70)}</div><h1>${title}</h1><div class="meta">${sub}</div><div class="dots">${d}</div><div class="err" id="perr">${esc(A.err)}</div><div class="keys">${[1,2,3,4,5,6,7,8,9].map(k).join("")}<button data-k="del" aria-label="Delete">⌫</button>${k(0)}<button data-k="go" class="go" aria-label="Enter">→</button></div>${window.top!==window&&!A.token?`<button data-act="exit" style="color:var(--mute);font-size:14px;padding:10px 18px;margin-top:4px">Cancel</button>`:""}</div>`;
 }
 function shell(inner){
   const nNew=A.unseen.size;
@@ -122,7 +122,7 @@ function shell(inner){
   ${A.offline?`<span class="net">Offline, retrying…</span>`:""}
   <button class="tab ${A.tab=="menu"?"on":""}" data-tab="menu">Menu</button>
   <button class="tab ${A.tab=="inbox"?"on":""}" data-tab="inbox">Inbox<span class="bdg" ${nNew?"":"hidden"}>${nNew}</span></button>
-  <button class="lock" data-act="lock">Lock</button></div><main>${inner}</main>
+  <button class="lock" data-act="lock">Lock</button>${window.top!==window?`<button class="lock" data-act="exit">Exit</button>`:""}</div><main>${inner}</main>
   <div class="ban" id="ban" data-act="openban"><div class="num" id="bn">000</div><div style="flex:1"><b id="bt">New list</b><small id="bs"></small></div></div>`;
 }
 function detailHTML(o){
@@ -280,7 +280,8 @@ document.addEventListener("click",e=>{
   if(op){A.sel=op.dataset.open;A.unseen.delete(A.sel);refresh();return}
   const act=e.target.closest("[data-act]");
   if(act){const a=act.dataset.act;
-    if(a=="lock"){A.locked=true;A.pin="";A.err="";A.sel=null;A.view="waiting";A.done=[];render()}
+    if(a=="exit"){try{parent.postMessage({pm:"exit"},location.origin)}catch(e){}}
+    else if(a=="lock"){A.locked=true;A.pin="";A.err="";A.sel=null;A.view="waiting";A.done=[];render()}
     else if(a=="serve")setStatus(act.dataset.id,"serving");
     else if(a=="done")setStatus(act.dataset.id,"done");
     else if(a=="openban"){$("ban").classList.remove("show");A.tab="inbox";A.pin="";render()}

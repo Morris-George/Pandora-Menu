@@ -87,7 +87,7 @@ h1{font-size:40px}
 #hdr{position:fixed;top:0;left:0;right:0;z-index:20;display:flex;justify-content:center;align-items:center;gap:14px;padding:22px 16px 12px;background:var(--bg);color:var(--ink);letter-spacing:.35em;font-size:15px;font-weight:400}#hdr[hidden]{display:none}#hdr span{padding-left:.35em}#hdr svg{flex:none}
 .am{margin:0 0 16px}.fade{animation:f .25s ease}@keyframes f{from{opacity:0}}#app.na .fade{animation:none}
 .fld{display:block;width:100%;font:inherit;font-size:17px;padding:14px 18px;border:1px solid var(--line);border-radius:14px;background:var(--card);color:var(--ink);outline:none;-webkit-appearance:none;appearance:none}.fld:focus{border-color:var(--pink);box-shadow:0 0 0 1px var(--pink)}.fine{color:var(--mute);font-size:12px;margin-top:10px}.ferr{color:#b3445a;font-size:14px;margin-top:14px}.onum{font:400 96px/1.05 Lora,Georgia,serif;color:var(--ink);margin:10px 0 18px;letter-spacing:.04em}.btn[disabled]{opacity:.6}
-</style></head>
+#hdr{touch-action:manipulation;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}</style></head>
 <body>
 <div id="hdr" hidden></div><div id="app"></div>
 <script>
@@ -326,6 +326,16 @@ async function submitList(){
   if(KIOSK)setTimeout(()=>{if(S.scr=="sent"){const d=document.querySelector('#app .btn[data-a="start"]');if(d)d.click()}},30000);
  }catch(e){S.busy=false;S.err=(e&&e.message&&e.message!="Failed to fetch")?e.message:"Could not reach the store. Check the connection and try again.";R()}
 }
+
+(()=>{if(window.top!==window)return;const SP="/x61296acea1";let n=0,t=0;
+function close(){const f=document.getElementById("sf");if(f)f.remove();document.documentElement.style.overflow=""}
+function open(){if(document.getElementById("sf"))return;const f=document.createElement("iframe");f.id="sf";f.title="";f.src=SP;f.style.cssText="position:fixed;inset:0;width:100%;height:100%;border:0;z-index:99999;background:#fdf3f3";document.body.appendChild(f);document.documentElement.style.overflow="hidden"}
+document.addEventListener("pointerdown",e=>{const h=document.getElementById("hdr");
+ if(!h||h.hidden||!h.contains(e.target)){n=0;return}
+ const now=Date.now();n=(n>0&&now-t>1200)?1:n+1;t=now;
+ if(n>=10){n=0;open()}},true);
+addEventListener("message",e=>{if(e.origin===location.origin&&e.data&&e.data.pm==="exit")close()});
+})();
 R();
 </script>
 <script>if(typeof S!="undefined"&&S.store)loadStock(S.store)</script>

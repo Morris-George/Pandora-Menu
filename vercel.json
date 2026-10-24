@@ -1,8 +1,41 @@
 {
   "cleanUrls": true,
-  "rewrites": [{ "source": "/staff", "destination": "/staff.html" }],
+  "rewrites": [
+    {
+      "source": "/staff",
+      "destination": "/"
+    }
+  ],
   "headers": [
-    { "source": "/staff", "headers": [{ "key": "Cache-Control", "value": "no-store" }, { "key": "X-Robots-Tag", "value": "noindex" }, { "key": "Referrer-Policy", "value": "no-referrer" }] },
-    { "source": "/staff.html", "headers": [{ "key": "Cache-Control", "value": "no-store" }, { "key": "X-Robots-Tag", "value": "noindex" }] }
+    {
+      "source": "/x61296acea1",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store"
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "no-referrer"
+        }
+      ]
+    },
+    {
+      "source": "/x61296acea1.html",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store"
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex"
+        }
+      ]
+    }
   ]
 }
