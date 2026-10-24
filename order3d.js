@@ -142,59 +142,34 @@ function cutout(im, maxSide) {
   return { cv: out, w: cw, h: chh, al: alc };
 }
 
-/* ---------- cut-out photo -> solid with depth ----------
-   The photo's outline is kept; thickness is "inflated" from it (rounded edges, like a real bead or band),
-   the photo is the surface colour, and the back is the mirror of the front. So the piece can be turned all the way round. */
-function inflate(T, cut, wWorld, hcap, grid) {
-  var Wd = wWorld, Hd = wWorld * cut.h / cut.w, Gx, Gy, i, j, k;
-  if (cut.w >= cut.h) { Gx = grid; Gy = Math.max(4, Math.round(grid * cut.h / cut.w)); } else { Gy = grid; Gx = Math.max(4, Math.round(grid * cut.w / cut.h)); }
-  var VX = Gx + 1, VY = Gy + 1, NV = VX * VY, inside = new Uint8Array(NV), d = new Float32Array(NV);
-  for (j = 0; j < VY; j++) for (i = 0; i < VX; i++) {
-    var px = Math.round(i / Gx * (cut.w - 1)), py = Math.round(j / Gy * (cut.h - 1));
-    var a = cut.al ? cut.al[py * cut.w + px] : 255, id = j * VX + i;
-    inside[id] = a >= 128 ? 1 : 0; d[id] = inside[id] ? 1e6 : 0;
+/* The lower, front arc of a bracelet photo: where the charms are threaded.
+   Returns the chain centre line (pixels) with the clasp area left out.                                          */
+function chainArc(cut) {
+  var w = cut.w, h = cut.h, al = cut.al, low = new Float32Array(w), th = new Float32Array(w), x, y, k;
+  var maxT = Math.round(w * 0.16);
+  for (x = 0; x < w; x++) {
+    low[x] = -1; th[x] = 0;
+    for (y = h - 1; y >= 0; y--) if (al[y * w + x] >= 235) { low[x] = y; break; }
+    if (low[x] >= 0) { for (k = 0; k < maxT && low[x] - k >= 0 && al[(low[x] - k) * w + x] >= 200; k++); th[x] = k; }
   }
-  /* distance to the outline (chamfer) */
-  var D1 = 1, D2 = 1.414;
-  for (j = 0; j < VY; j++) for (i = 0; i < VX; i++) {
-    k = j * VX + i; if (!d[k]) continue; var m = d[k];
-    if (i > 0) m = Math.min(m, d[k - 1] + D1); if (j > 0) m = Math.min(m, d[k - VX] + D1);
-    if (i > 0 && j > 0) m = Math.min(m, d[k - VX - 1] + D2); if (i < VX - 1 && j > 0) m = Math.min(m, d[k - VX + 1] + D2);
-    d[k] = m;
+  /* smooth the outline */
+  var sm = new Float32Array(w), R = Math.max(2, Math.round(w * 0.012));
+  for (x = 0; x < w; x++) { var s = 0, n = 0; for (k = -R; k <= R; k++) { var xx = x + k; if (xx >= 0 && xx < w && low[xx] >= 0) { s += low[xx]; n++; } } sm[x] = n ? s / n : -1; }
+  var ths = th.slice().filter(function (v) { return v > 0; }).sort(function (a, b) { return a - b; });
+  var med = ths.length ? ths[Math.floor(ths.length * 0.45)] : w * 0.04;
+  var ok = new Uint8Array(w);
+  for (x = 0; x < w; x++) ok[x] = sm[x] >= 0 && th[x] <= Math.max(med * 1.7, med + 5) ? 1 : 0;
+  /* grow the "clasp" gaps so charms stay clear of them */
+  var bad = new Uint8Array(w), g = Math.round(w * 0.03);
+  for (x = 0; x < w; x++) if (!ok[x]) for (k = -g; k <= g; k++) if (x + k >= 0 && x + k < w) bad[x + k] = 1;
+  var lowest = 0; for (x = 0; x < w; x++) if (sm[x] > lowest) lowest = sm[x];
+  var band = lowest - h * 0.3, runs = [], cur = null;
+  for (x = 0; x < w; x++) {
+    var good = sm[x] >= 0 && !bad[x] && sm[x] >= band;
+    if (good) { var pt = { x: x, y: sm[x] - Math.max(2, Math.min(th[x], med * 1.2)) / 2 }; if (!cur) { cur = []; runs.push(cur); } cur.push(pt); } else cur = null;
   }
-  var dmax = 0;
-  for (j = VY - 1; j >= 0; j--) for (i = VX - 1; i >= 0; i--) {
-    k = j * VX + i; if (!d[k]) continue; var m2 = d[k];
-    if (i < VX - 1) m2 = Math.min(m2, d[k + 1] + D1); if (j < VY - 1) m2 = Math.min(m2, d[k + VX] + D1);
-    if (i < VX - 1 && j < VY - 1) m2 = Math.min(m2, d[k + VX + 1] + D2); if (i > 0 && j < VY - 1) m2 = Math.min(m2, d[k + VX - 1] + D2);
-    d[k] = m2; if (m2 > dmax) dmax = m2;
-  }
-  var cw = Wd / Gx, hc = Math.min(hcap, Math.max(dmax, 1) * cw * 0.95), Dbig = Math.max(1, Math.min(dmax * 0.95, 0.12 / cw));
-  var h = new Float32Array(NV);
-  for (k = 0; k < NV; k++) if (inside[k]) { var t = Math.min(1, d[k] / Dbig); h[k] = hc * Math.sqrt(1 - (1 - t) * (1 - t)); }
-  var h2 = h.slice();                                          // soften
-  for (j = 1; j < VY - 1; j++) for (i = 1; i < VX - 1; i++) {
-    k = j * VX + i; if (!inside[k]) continue;
-    h2[k] = (h[k] * 4 + h[k - 1] + h[k + 1] + h[k - VX] + h[k + VX]) / 8;
-  }
-  var pos = new Float32Array(NV * 2 * 3), uv = new Float32Array(NV * 2 * 2);
-  for (j = 0; j < VY; j++) for (i = 0; i < VX; i++) {
-    k = j * VX + i; var x = (i / Gx - 0.5) * Wd, y = (0.5 - j / Gy) * Hd, u = i / Gx, v = 1 - j / Gy;
-    pos[k * 3] = x; pos[k * 3 + 1] = y; pos[k * 3 + 2] = h2[k];
-    var b = (NV + k); pos[b * 3] = x; pos[b * 3 + 1] = y; pos[b * 3 + 2] = -h2[k];
-    uv[k * 2] = u; uv[k * 2 + 1] = v; uv[b * 2] = u; uv[b * 2 + 1] = v;
-  }
-  var idx = [];
-  for (j = 0; j < Gy; j++) for (i = 0; i < Gx; i++) {
-    var A = j * VX + i, B = A + 1, C = A + VX, E = C + 1;
-    if (!(inside[A] || inside[B] || inside[C] || inside[E])) continue;
-    idx.push(A, C, B, B, C, E);                                // front
-    idx.push(NV + A, NV + B, NV + C, NV + B, NV + E, NV + C);  // back
-  }
-  var g = new T.BufferGeometry();
-  g.setAttribute("position", new T.BufferAttribute(pos, 3)); g.setAttribute("uv", new T.BufferAttribute(uv, 2));
-  g.setIndex(idx); g.computeVertexNormals();
-  return { geo: g, w: Wd, h: Hd };
+  runs.sort(function (a, b) { return b.length - a.length; });
+  return { pts: runs.length ? runs[0] : [], w: w, h: h, thick: med };
 }
 
 /* ====================================================================== */
@@ -224,10 +199,12 @@ function mount(host, items, opt) {
     chipsEl.innerHTML = ""; noteEl.textContent = "";
   }
 
-  /* which photos do we need? (the bracelet itself is built in 3D, so only its colour comes from the catalogue) */
+  /* which photos do we need? */
   var need = {}, list = [];
   function want(p, side) { if (!p || !p.im || !p.im[0]) return; var u = img(p.im[0], side); if (!need[u]) { need[u] = 1; list.push({ p: p, url: u, side: side }); } }
-  P.out.br.forEach(function (p) { want(p, 420); });
+  P.out.br.forEach(function (p) { want(p, 900); });
+  var sample = !P.out.br.length && P.out.ch.length ? opt.sample : null;
+  if (sample) want(sample, 900);
   ["ne", "ea", "ri", "ch"].forEach(function (k) { P.out[k].forEach(function (p) { want(p, k === "ch" ? 520 : 760); }); });
 
   var doneN = 0;
@@ -252,7 +229,6 @@ function mount(host, items, opt) {
     catch (e) { fallback("Your device couldn't open the 3D view."); return; }
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.outputEncoding = T.sRGBEncoding;
-    renderer.toneMapping = T.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
     renderer.setClearColor(0x000000, 0);
     stage.innerHTML = ""; stage.appendChild(renderer.domElement);
 
@@ -260,138 +236,109 @@ function mount(host, items, opt) {
     var track = function (o) { disposables.push(o); return o; };
     var aniso = Math.min(8, renderer.capabilities.getMaxAnisotropy ? renderer.capabilities.getMaxAnisotropy() : 1);
 
-    /* ---- studio reflections (so metal looks like metal) ---- */
-    (function env() {
-      var es = new T.Scene(), i;
-      var g = new T.SphereGeometry(40, 48, 24), pos = g.attributes.position, col = [];
-      for (i = 0; i < pos.count; i++) {
-        var y = pos.getY(i) / 40, t = (y + 1) / 2, c = new T.Color();
-        c.setRGB(0.42 + 0.58 * t * t, 0.32 + 0.62 * t * t, 0.34 + 0.62 * t * t); col.push(c.r, c.g, c.b);
-      }
-      g.setAttribute("color", new T.Float32BufferAttribute(col, 3));
-      es.add(new T.Mesh(g, new T.MeshBasicMaterial({ vertexColors: true, side: T.BackSide })));
-      function panel(w, h, x, y, z, v, rgb) {
-        var m = new T.Mesh(new T.PlaneGeometry(w, h), new T.MeshBasicMaterial({ side: T.DoubleSide }));
-        m.material.color.setRGB(rgb ? rgb[0] * v : v, rgb ? rgb[1] * v : v, rgb ? rgb[2] * v : v);
-        m.position.set(x, y, z); m.lookAt(0, 0, 0); es.add(m);
-      }
-      panel(26, 10, 0, 30, 6, 5); panel(8, 22, 28, 6, 10, 4); panel(8, 22, -28, 6, 10, 4); panel(14, 8, 0, 8, -32, 3);
-      panel(10, 30, 30, 0, -14, 0.04); panel(10, 30, -30, 0, -14, 0.04); panel(18, 6, 0, -14, 28, 1.6, [1, 0.72, 0.76]);
-      var pm = new T.PMREMGenerator(renderer), rt = pm.fromScene(es, 0.015);
-      scene.environment = rt.texture; pm.dispose(); track(rt); track(g);
-    })();
-    scene.add(new T.AmbientLight(0xffffff, 0.45));
-    var key = new T.DirectionalLight(0xffffff, 0.8); key.position.set(3, 6, 6); scene.add(key);
-
-    /* ---- materials ---- */
-    var MET = {
-      silver: { color: 0xeceef2, metalness: 1, roughness: 0.2, envMapIntensity: 1.3 },
-      gold:   { color: 0xf2c76a, metalness: 1, roughness: 0.22, envMapIntensity: 1.3 },
-      rose:   { color: 0xeeaf9d, metalness: 1, roughness: 0.22, envMapIntensity: 1.3 }
-    };
-    var metalKey = function (p) { return p && p.m === "Gold" ? "gold" : p && p.m === "Rose" ? "rose" : "silver"; };
-    function texOf(cut) { var t = new T.CanvasTexture(cut.cv); t.encoding = T.sRGBEncoding; t.anisotropy = aniso; return track(t); }
-    function photoMat(cut) {                      // the real photo is the surface; a little reflection is added so it shines as it turns
-      var t = texOf(cut);
-      return track(new T.MeshStandardMaterial({ map: t, emissive: 0xffffff, emissiveMap: t, emissiveIntensity: 0.55, metalness: 0.3, roughness: 0.38, envMapIntensity: 0.9,
-        alphaTest: 0.4, alphaToCoverage: true, toneMapped: false, side: T.FrontSide }));
+    function texOf(cut) {
+      var t = new T.CanvasTexture(cut.cv); t.encoding = T.sRGBEncoding; t.anisotropy = aniso; t.premultiplyAlpha = false; return track(t);
     }
-    function solid(p, side, wWorld, hcap, grid) {
+    var order = 0;
+    function card(p, side, wWorld) {            // one photo as a floating plane; wWorld = width in world units
       var cut = CUT[img(p.im[0], side)]; if (!cut || cut.missing) return null;
-      var inf = inflate(T, cut, wWorld, hcap, grid); track(inf.geo);
-      var m = new T.Mesh(inf.geo, photoMat(cut)); return { mesh: m, w: inf.w, h: inf.h };
+      var hWorld = wWorld * cut.h / cut.w, geo = track(new T.PlaneGeometry(wWorld, hWorld));
+      var mat = track(new T.MeshBasicMaterial({ map: texOf(cut), transparent: true, depthWrite: false, toneMapped: false, side: T.DoubleSide }));
+      var m = new T.Mesh(geo, mat);
+      if (cut.card) { m.material.map.minFilter = T.LinearFilter; }
+      return { mesh: m, w: wWorld, h: hWorld, cut: cut };
     }
-    function solidFit(p, side, maxSide, hcap, grid) {
+    function fitMax(p, side, maxSide) {          // plane whose longest side = maxSide
       var cut = CUT[img(p.im[0], side)]; if (!cut || cut.missing) return null;
-      return solid(p, side, cut.w >= cut.h ? maxSide : maxSide * cut.w / cut.h, hcap, grid);
+      var w = cut.w >= cut.h ? maxSide : maxSide * cut.w / cut.h;
+      return card(p, side, w);
     }
 
-    /* ---- bracelet: a real 3D chain hoop ---- */
-    var R = 1.5, TILT = 0.85;
-    function ribs(kind) {                          // surface pattern, used as a bump map
-      var cv = document.createElement("canvas"); cv.width = cv.height = 128; var c = cv.getContext("2d"), k;
-      c.fillStyle = "#6a6a6a"; c.fillRect(0, 0, 128, 128);
-      function band(w, col, off, slope) { c.strokeStyle = col; c.lineWidth = w; for (k = -6; k < 10; k++) { c.beginPath(); c.moveTo(-20, k * 32 + off - 20 * slope); c.lineTo(150, k * 32 + off + 150 * slope); c.stroke(); } }
-      if (kind === "snake") { band(15, "#8a8a8a", 0, 1); band(9, "#c8c8c8", 0, 1); band(3, "#ffffff", 0, 1); }
-      else if (kind === "braid") { band(20, "#9a9a9a", 0, 1); band(11, "#e0e0e0", 0, 1); band(20, "#7a7a7a", 16, -1); band(8, "#c0c0c0", 16, -1); }
-      else if (kind === "leather") { for (k = 0; k < 900; k++) { c.fillStyle = "rgba(" + (k % 2 ? "255,255,255" : "0,0,0") + ",.12)"; c.fillRect(Math.random() * 128, Math.random() * 128, 3, 3); } }
-      var t = new T.CanvasTexture(cv); t.wrapS = t.wrapT = T.RepeatWrapping; t.anisotropy = aniso; return track(t);
-    }
-    var clText = (function () {                    // engraved "PANDORA" on the ball clasp
-      var cv = document.createElement("canvas"); cv.width = 512; cv.height = 256; var c = cv.getContext("2d");
-      c.fillStyle = "#888"; c.fillRect(0, 0, 512, 256); c.fillStyle = "#222"; c.font = "bold 46px Georgia, serif"; c.textAlign = "center"; c.textBaseline = "middle";
-      c.fillText("PANDORA", 256, 128); var t = new T.CanvasTexture(cv); return track(t);
+    /* soft contact shadow (shared) */
+    var shTex = (function () {
+      var cv = document.createElement("canvas"); cv.width = cv.height = 64; var c = cv.getContext("2d");
+      var gr = c.createRadialGradient(32, 32, 2, 32, 32, 31); gr.addColorStop(0, "rgba(70,40,50,.55)"); gr.addColorStop(1, "rgba(70,40,50,0)");
+      c.fillStyle = gr; c.fillRect(0, 0, 64, 64); return track(new T.CanvasTexture(cv));
     })();
-    function avgColor(cut) {                       // for coloured / woven bracelets take the colour from the photo
-      if (!cut || !cut.al) return null; var d = cut.cv.getContext("2d").getImageData(0, 0, cut.w, cut.h).data, r = 0, g = 0, b = 0, n = 0, s = 0;
-      for (var i = 0; i < cut.w * cut.h; i += 3) { if (cut.al[i] < 250) continue; var R0 = d[i * 4], G0 = d[i * 4 + 1], B0 = d[i * 4 + 2], mx = Math.max(R0, G0, B0), mn = Math.min(R0, G0, B0); if (mx > 235 || mx < 40) continue; r += R0; g += G0; b += B0; s += (mx - mn) / (mx || 1); n++; }
-      return n ? { r: r / n, g: g / n, b: b / n, sat: s / n } : null;
+    var shMat = track(new T.MeshBasicMaterial({ map: shTex, transparent: true, depthWrite: false, toneMapped: false }));
+    function shadowPlane(w, h) { return new T.Mesh(track(new T.PlaneGeometry(w, h)), shMat); }
+
+    /* ---- pieces ---- */
+    var pieces = [], WB = 3.0, O = P.out, missing = 0;
+    function addPiece(kind, g, w, h, ox, oy) {
+      var wrap = new T.Group(); wrap.add(g); scene.add(wrap);
+      pieces.push({ kind: kind, wrap: wrap, w: w, h: h, cx: ox || 0, cy: oy || 0, tx: 0, ty: 0, tz: 0, s: 0, show: true, ph: Math.random() * 6.28 });
     }
 
-    var order = 0, missing = 0;
-    var CH = { Charm: ["max", 0.17, 0.27], Dangle: ["h", 0.3, 0.12], Clip: ["max", 0.13, 0.33], Medallion: ["max", 0.2, 0.22], Spacer: ["max", 0.09, 0.33], Link: ["max", 0.16, 0.25], "Safety Chain": ["max", 0.34, 0.1] };
-    function charmSolid(cp) {
+    var CH_SIZE = { Charm: ["max", 0.17], Dangle: ["h", 0.3], Clip: ["max", 0.12], Medallion: ["max", 0.2], Spacer: ["max", 0.09], Link: ["max", 0.16], "Safety Chain": ["max", 0.34] };
+    function charmCard(cp) {
       var cut = CUT[img(cp.im[0], 520)]; if (!cut || cut.missing) { missing++; return null; }
-      var sp = CH[cp.f] || CH.Charm, tgt = sp[1] * (2 * R), w;
-      if (sp[0] === "h") w = tgt * cut.w / cut.h; else w = cut.w >= cut.h ? tgt : tgt * cut.w / cut.h;
-      var h = w * cut.h / cut.w, s = solid(cp, 520, w, sp[2] * Math.min(w, h), 70);
-      if (s) s.dangle = cp.f === "Dangle" || cp.f === "Safety Chain"; return s;
+      var spec = CH_SIZE[cp.f] || ["max", 0.17], tgt = spec[1] * WB, w;
+      if (spec[0] === "h") w = tgt * cut.w / cut.h; else w = cut.w >= cut.h ? tgt : tgt * cut.w / cut.h;
+      var c = card(cp, 520, w); if (c) c.dangle = cp.f === "Dangle" || cp.f === "Safety Chain"; return c;
     }
 
     function braceletPiece(p, charms) {
-      var cut = p && p.im && p.im[0] ? CUT[img(p.im[0], 420)] : null, name = (p && p.n || "").toLowerCase(), mk = metalKey(p);
-      var pattern = p && p.f === "Bangle" ? "plain" : /leather|cord/.test(name) ? "leather" : /braid|woven|rope|twist|foxtail|weave/.test(name) ? "braid" : "snake";
-      var tube = pattern === "plain" ? 0.1 : pattern === "braid" ? 0.085 : 0.07;
-      var mat = { color: MET[mk].color, metalness: 1, roughness: MET[mk].roughness, envMapIntensity: MET[mk].envMapIntensity };
-      var av = (pattern === "leather" || (p && /enamel|blue|black|pink|red|green|purple|cord|leather/.test(name))) ? avgColor(cut) : null;
-      if (av && av.sat > 0.18 || pattern === "leather") { var cc = av || { r: 90, g: 58, b: 43 }; mat.color = (Math.round(cc.r) << 16) | (Math.round(cc.g) << 8) | Math.round(cc.b); mat.metalness = pattern === "leather" ? 0 : 0.6; mat.roughness = pattern === "leather" ? 0.6 : 0.4; mat.envMapIntensity = 0.7; }
-      var chainMat = new T.MeshStandardMaterial(mat); track(chainMat);
-      if (pattern !== "plain") { var bt = ribs(pattern); bt.repeat.set(pattern === "braid" ? 46 : 70, 1); chainMat.bumpMap = bt; chainMat.bumpScale = pattern === "leather" ? 0.5 : 2.2; }
-
-      var hoop = new T.Group(); hoop.rotation.x = -TILT;
-      var pts = []; for (var i = 0; i < 160; i++) { var a = i / 160 * Math.PI * 2; pts.push(new T.Vector3(Math.sin(a) * R, Math.cos(a) * R, 0)); }
-      var tg = track(new T.TubeGeometry(new T.CatmullRomCurve3(pts, true), 480, tube, 18, true));
-      hoop.add(new T.Mesh(tg, chainMat));
-
-      /* ball clasp at the back of the hoop (top) */
-      var clMat = track(new T.MeshStandardMaterial({ color: MET[mk].color, metalness: 1, roughness: 0.2, envMapIntensity: 1.3, bumpMap: clText, bumpScale: 1.2 }));
-      var ball = new T.Mesh(track(new T.SphereGeometry(tube * 1.9, 40, 28)), clMat); ball.position.set(0, R, 0); hoop.add(ball);
-      var barrelMat = track(new T.MeshStandardMaterial(MET[mk])), bg = track(new T.CylinderGeometry(tube * 1.25, tube * 1.25, tube * 2.6, 20));
-      [-1, 1].forEach(function (sd) { var b = new T.Mesh(bg, barrelMat); b.rotation.z = Math.PI / 2; b.position.set(sd * tube * 3.4, R, 0); hoop.add(b); });
-
-      /* charms: solid bodies threaded on the chain (the chain passes through the middle of each) */
-      var solids = charms.map(charmSolid).filter(Boolean), N = solids.length, gap = 0.03;
-      var total = solids.reduce(function (s, c) { return s + c.w + gap; }, 0) / R, avail = 2 * (Math.PI - 0.6), f = N ? Math.min(1, avail / total) : 1;
-      var cum = -total * f / 2;
-      solids.forEach(function (c, k) {
-        var span = (c.w + gap) / R * f, a = cum + span / 2; cum += span;
-        var holder = new T.Group(); holder.position.set(Math.sin(a) * R, -Math.cos(a) * R, (f < 0.8 ? (k % 2 ? 0.03 : -0.03) : 0));
-        holder.rotation.z = a;
-        var inner = new T.Group(); inner.rotation.x = TILT * 0.6;
-        if (c.dangle) { inner.rotation.y = 1.05; c.mesh.position.y = -c.h * 0.36; }
-        inner.add(c.mesh); holder.add(inner); hoop.add(holder); c.holder = holder;
-      });
-      var g = new T.Group(); g.add(hoop);
-      addPiece("br", g, 2 * R + 0.5, 2 * R * Math.cos(TILT) + 0.9, 0, 0);
+      var g = new T.Group(), cut = p ? CUT[img(p.im[0], 900)] : null;
+      if (!cut || cut.missing) { missing++; if (charms.length === 0) return; cut = null; }
+      var base = null, kx = 1, bw = WB, bh = WB * 0.8, arc = null;
+      if (cut) { base = card(p, 900, WB); kx = WB / cut.w; bw = WB; bh = base.h; g.add(base.mesh); if (!cut.card && cut.al) arc = chainArc(cut); }
+      /* placing zone along the chain (in photo pixels -> world) */
+      var zone = [];
+      if (arc) { arc.pts.forEach(function (q) { zone.push({ x: (q.x - cut.w / 2) * kx, y: (cut.h / 2 - q.y) * kx }); }); }
+      if (zone.length < Math.max(8, (cut ? cut.w : 100) * 0.12)) {                                  // no usable chain: use a plain lower arc
+        zone = []; for (var i = 0; i <= 40; i++) { var u = -0.5 + i / 40; zone.push({ x: u * bw * 0.8, y: -bh * 0.5 + 0.2 * Math.cos(u * Math.PI) * bh * 0.5 }); }
+      }
+      /* arc length along the zone, split where the chain breaks (clasp) */
+      var cum = [0], k; for (k = 1; k < zone.length; k++) cum.push(cum[k - 1] + Math.hypot(zone[k].x - zone[k - 1].x, zone[k].y - zone[k - 1].y));
+      var total = cum[cum.length - 1];
+      function at(s) {                                         // s in [0,1] along the zone
+        var L = clamp(s, 0, 1) * total, j = 1; while (j < cum.length - 1 && cum[j] < L) j++;
+        var f = (L - cum[j - 1]) / Math.max(1e-6, cum[j] - cum[j - 1]), a = zone[j - 1], b = zone[j];
+        return { x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f, sl: Math.atan2(b.y - a.y, b.x - a.x) };
+      }
+      var cards = charms.map(charmCard).filter(Boolean), N = cards.length;
+      var avgW = N ? cards.reduce(function (s, c) { return s + c.w; }, 0) / N : 0.4, avgH = N ? cards.reduce(function (s, c) { return s + c.h; }, 0) / N : 0.4;
+      var perRow = Math.max(1, Math.floor(total / (avgW * 0.6))), rows = Math.max(1, Math.ceil(N / perRow)), idx = 0;
+      var minY = -bh / 2, maxX = bw / 2, minX = -bw / 2, maxY = bh / 2;
+      for (var r = 0; r < rows; r++) {
+        var cnt = Math.min(perRow, N - idx), rowCards = cards.slice(idx, idx + cnt); idx += cnt;
+        var span = Math.min(0.92, 0.3 + 0.12 * cnt), s0 = 0.5 - span / 2;
+        rowCards.forEach(function (c, ci) {
+          var s = cnt === 1 ? 0.5 : s0 + span * ci / (cnt - 1), pt = at(s);
+          var y = pt.y - (c.dangle ? c.h * 0.36 : 0) - r * avgH * 0.55;
+          var z = 0.05 + r * 0.04 + ci * 0.004;
+          var holder = new T.Group(); holder.position.set(pt.x, y, z);
+          holder.rotation.z = clamp(pt.sl, -0.7, 0.7) * 0.45;
+          var sh = shadowPlane(c.w * 1.25, c.h * 0.7); sh.position.set(c.w * 0.04, -c.h * 0.32, -0.012); holder.add(sh);
+          holder.add(c.mesh); g.add(holder);
+          c.mesh.renderOrder = 1;
+          if (!c.dangle && arc && base && base.mesh.material.map) {            // the real chain photo drawn again over the charm's middle, so the chain runs through it
+            var hw = c.w * 0.46, hh = Math.max(0.03, arc.thick * kx * 0.6), x0 = pt.x - hw, x1 = pt.x + hw, y0 = pt.y - hh, y1 = pt.y + hh;
+            var sg = track(new T.PlaneGeometry(2 * hw, 2 * hh)), uv = sg.attributes.uv;
+            var u0 = x0 / kx / cut.w + 0.5, u1 = x1 / kx / cut.w + 0.5, v0 = y0 / (kx * cut.h) + 0.5, v1 = y1 / (kx * cut.h) + 0.5;
+            uv.setXY(0, u0, v1); uv.setXY(1, u1, v1); uv.setXY(2, u0, v0); uv.setXY(3, u1, v0); uv.needsUpdate = true;
+            var st = new T.Mesh(sg, base.mesh.material); st.position.set(pt.x, pt.y, z + 0.02); st.renderOrder = 2; g.add(st);
+          }
+          c.holder = holder;
+          minY = Math.min(minY, y - c.h / 2); minX = Math.min(minX, pt.x - c.w / 2); maxX = Math.max(maxX, pt.x + c.w / 2); maxY = Math.max(maxY, y + c.h / 2);
+        });
+      }
+      addPiece("br", g, maxX - minX, maxY - minY, (minX + maxX) / 2, (minY + maxY) / 2);
     }
 
-    /* ---- pieces ---- */
-    var pieces = [], O = P.out;
-    function addPiece(kind, g, w, h, cx, cy) {
-      var wrap = new T.Group(), inner = new T.Group(); inner.add(g); inner.position.set(-(cx || 0), -(cy || 0), 0); wrap.add(inner); scene.add(wrap);
-      pieces.push({ kind: kind, wrap: wrap, w: w, h: h, tx: 0, ty: 0, tz: 0, s: 0, show: true, ph: Math.random() * 6.28 });
-    }
-    var sample = false, brs = O.br.map(function (p) { return { p: p, ch: [] }; });
-    if (!brs.length && O.ch.length) { brs = [{ p: { m: "Silver", f: "Chain", n: "" }, ch: [] }]; sample = true; }
-    O.ch.forEach(function (cp, i) { brs[i % brs.length].ch.push(cp); });
+    var brs = O.br.length ? O.br.map(function (p) { return { p: p, ch: [] }; }) : (O.ch.length ? [{ p: sample, ch: [] }] : []);
+    if (brs.length && !brs[0].p && O.ch.length) brs = [];
+    O.ch.forEach(function (cp, i) { if (brs.length) brs[i % brs.length].ch.push(cp); });
     brs.forEach(function (b) { braceletPiece(b.p, b.ch); });
+    if (!brs.length) O.ch.forEach(function (cp) { var c = fitMax(cp, 520, 1.0); if (c) { var g = new T.Group(); g.add(c.mesh); addPiece("br", g, c.w, c.h); } else missing++; });
 
-    var MAXS = { ne: 2.4, ea: 1.7, ri: 1.1, pn: 1.3 }, HCAP = { ne: 0.05, ea: 0.06, ri: 0.07, pn: 0.05 };
+    var MAXS = { ne: 2.4, ea: 1.7, ri: 1.1, pn: 1.3 };
     ["ne", "ea", "ri"].forEach(function (k) {
       O[k].forEach(function (p) {
-        var kk = k === "ne" && p.f === "Pendant" ? "pn" : k, s = solidFit(p, 760, MAXS[kk], HCAP[kk], 120);
-        if (!s) { missing++; return; }
-        var g = new T.Group(); g.add(s.mesh); addPiece(kk, g, s.w, s.h, 0, 0);
+        var kk = k === "ne" && p.f === "Pendant" ? "pn" : k, c = fitMax(p, 760, MAXS[kk]);
+        if (!c) { missing++; return; }
+        var g = new T.Group(), sh = null; g.add(c.mesh); addPiece(kk, g, c.w, c.h);
       });
     });
     if (!pieces.length) { fallback("We couldn't load the photos for the 3D view."); return; }
@@ -402,18 +349,18 @@ function mount(host, items, opt) {
       var gr = c.createRadialGradient(16, 16, 0, 16, 16, 16); gr.addColorStop(0, "rgba(255,147,160,1)"); gr.addColorStop(1, "rgba(255,147,160,0)");
       c.fillStyle = gr; c.fillRect(0, 0, 32, 32); var t = track(new T.CanvasTexture(cv));
       var n = 40, arr = new Float32Array(n * 3), seeds = [];
-      for (var i = 0; i < n; i++) { arr[i * 3] = (Math.random() - 0.5) * 9; arr[i * 3 + 1] = (Math.random() - 0.5) * 6; arr[i * 3 + 2] = -2.2 - Math.random() * 1.6; seeds.push(Math.random() * 6.28); }
+      for (var i = 0; i < n; i++) { arr[i * 3] = (Math.random() - 0.5) * 9; arr[i * 3 + 1] = (Math.random() - 0.5) * 6; arr[i * 3 + 2] = -0.6 - Math.random() * 1.6; seeds.push(Math.random() * 6.28); }
       var geo = track(new T.BufferGeometry()); geo.setAttribute("position", new T.BufferAttribute(arr, 3));
       var pt = new T.Points(geo, track(new T.PointsMaterial({ map: t, size: 0.14, transparent: true, opacity: 0.55, depthWrite: false })));
       scene.add(pt); return { pt: pt, base: arr.slice(), seeds: seeds };
     })();
 
-    /* ---- layout: neat rows, fitted to the screen; every piece turns on its own spot ---- */
-    var filter = "all", box = { w: 3, h: 3 }, aspect = 1;
+    /* ---- layout: neat rows, fitted to the screen ---- */
+    var filter = "all", box = { w: 3, h: 3, cx: 0, cy: 0 }, aspect = 1;
     function layout() {
       var vis = pieces.filter(function (p) { return filter === "all" || filterOf(p.kind) === filter; });
       pieces.forEach(function (p) { p.show = vis.indexOf(p) > -1; });
-      var gap = 0.3, best = null, maxW = 0, sumW = 0;
+      var gap = 0.35, best = null, maxW = 0, sumW = 0;
       vis.forEach(function (p) { maxW = Math.max(maxW, p.w); sumW += p.w + gap; });
       var sorted = vis.slice().sort(function (a, b) { return b.h - a.h; });
       for (var limit = maxW; limit <= sumW + 0.01; limit += Math.max(0.15, (sumW - maxW) / 24)) {
@@ -423,14 +370,14 @@ function mount(host, items, opt) {
           cur.items.push(p); cur.w += p.w + (cur.items.length > 1 ? gap : 0); cur.h = Math.max(cur.h, p.h);
         });
         var W = Math.max.apply(null, rows.map(function (r) { return r.w; })), H = rows.reduce(function (s, r) { return s + r.h; }, 0) + gap * (rows.length - 1);
-        var cost = Math.max(W / aspect, H);
+        var sc = Math.min(aspect >= W / H ? 1 : 1, 1), cost = Math.max(W / aspect, H);   // bigger on screen = smaller cost
         if (!best || cost < best.cost - 1e-6) best = { cost: cost, rows: rows, W: W, H: H };
       }
       if (!best) return;
       var y = best.H / 2;
       best.rows.forEach(function (r) {
         var x = -r.w / 2; y -= r.h / 2;
-        r.items.forEach(function (p) { p.tx = x + p.w / 2; p.ty = y; p.tz = 0; x += p.w + gap; });
+        r.items.forEach(function (p) { p.tx = x + p.w / 2 - p.cx; p.ty = y - p.cy; p.tz = (p.kind === "br" ? 0 : -0.05); x += p.w + gap; });
         y -= r.h / 2 + gap;
       });
       box = { w: best.W, h: best.H };
@@ -447,20 +394,20 @@ function mount(host, items, opt) {
       });
     } else chipsEl.style.display = "none";
 
-    var notes = ["Each piece is built from its real photo, so the colours and designs match. Sizes are adjusted so everything is easy to see."];
-    if (sample) notes.unshift("Your charms are shown on a sample silver bracelet.");
+    var notes = ["These are the photos of your pieces, put together as they would be worn. Sizes are adjusted so everything is easy to see."];
+    if (sample) notes.unshift("Your charms are shown on a sample bracelet.");
     if (P.cut) notes.unshift("Showing the first pieces of a large order.");
     if (missing) notes.unshift(missing + " photo" + (missing > 1 ? "s" : "") + " couldn't be loaded.");
     noteEl.textContent = notes.join(" ");
 
     /* ---- tools, hint ---- */
-    var hint = document.createElement("div"); hint.className = "v3hint"; hint.textContent = "Drag to turn it around · pinch or scroll to zoom";
+    var hint = document.createElement("div"); hint.className = "v3hint"; hint.textContent = "Drag to tilt and look around · pinch or scroll to zoom";
     var tools = document.createElement("div"); tools.className = "v3tools";
-    tools.innerHTML = '<button type="button" data-t="spin" aria-label="Pause turning" title="Pause / play">❚❚</button><button type="button" data-t="reset" aria-label="Reset view" title="Reset view">⟲</button>';
+    tools.innerHTML = '<button type="button" data-t="spin" aria-label="Pause motion" title="Pause / play">❚❚</button><button type="button" data-t="reset" aria-label="Reset view" title="Reset view">⟲</button>';
     stage.appendChild(hint); stage.appendChild(tools);
 
-    /* ---- input: drag turns the pieces, up/down changes the viewing angle ---- */
-    var yaw = 0.5, pitch = 0.22, zoom = 1, dist = 12, auto = true, idle = 99, dragging = false, ptrs = {}, lastPinch = 0;
+    /* ---- camera + input ---- */
+    var yaw = 0, pitch = 0.08, zoom = 1, dist = 12, auto = true, idle = 99, dragging = false, ptrs = {}, lastPinch = 0, YMAX = 1.2;
     var poke = function () { idle = 0; };
     function onDown(e) {
       if (e.target.closest(".v3tools")) return;
@@ -475,20 +422,20 @@ function mount(host, items, opt) {
         var d = Math.hypot(ptrs[ks[0]].x - ptrs[ks[1]].x, ptrs[ks[0]].y - ptrs[ks[1]].y);
         if (lastPinch) zoom = clamp(zoom * lastPinch / d, 0.4, 1.6); lastPinch = d;
       } else {
-        yaw += (e.clientX - p.x) * 0.012; pitch = clamp(pitch + (e.clientY - p.y) * 0.005, -0.2, 1.0);
+        yaw = clamp(yaw - (e.clientX - p.x) * 0.008, -YMAX, YMAX); pitch = clamp(pitch + (e.clientY - p.y) * 0.005, -0.45, 0.7);
         ptrs[e.pointerId] = { x: e.clientX, y: e.clientY };
       }
       poke();
     }
     function onUp(e) { delete ptrs[e.pointerId]; lastPinch = 0; if (!Object.keys(ptrs).length) { dragging = false; stage.classList.remove("drag"); } poke(); }
     function onWheel(e) { e.preventDefault(); zoom = clamp(zoom * Math.exp(e.deltaY * 0.001), 0.4, 1.6); poke(); }
-    function reset() { yaw = 0.5; pitch = 0.22; zoom = 1; idle = 99; }
+    function reset() { yaw = 0; pitch = 0.08; zoom = 1; idle = 99; }
     stage.addEventListener("pointerdown", onDown); stage.addEventListener("pointermove", onMove);
     stage.addEventListener("pointerup", onUp); stage.addEventListener("pointercancel", onUp);
     stage.addEventListener("wheel", onWheel, { passive: false }); stage.addEventListener("dblclick", reset);
     tools.addEventListener("click", function (e) {
       var b = e.target.closest("[data-t]"); if (!b) return;
-      if (b.dataset.t === "reset") reset(); else { auto = !auto; b.textContent = auto ? "❚❚" : "▶"; b.setAttribute("aria-label", auto ? "Pause turning" : "Play turning"); }
+      if (b.dataset.t === "reset") reset(); else { auto = !auto; b.textContent = auto ? "❚❚" : "▶"; b.setAttribute("aria-label", auto ? "Pause motion" : "Play motion"); }
     });
 
     function resize() {
@@ -504,7 +451,10 @@ function mount(host, items, opt) {
       if (ctl.dead) return;
       raf = requestAnimationFrame(frame);
       var dt = Math.min(0.05, (now - last) / 1000); last = now; t += dt; idle += dt;
-      if (auto && !dragging && idle > 1.5) yaw += dt * 0.55;            // slow full turn
+      if (auto && !dragging && idle > 2.2) {                       // gentle swing so the depth is visible
+        var ty = Math.sin(t * 0.55) * 0.42, tp = 0.1 + Math.sin(t * 0.37) * 0.07, e = 1 - Math.exp(-dt * 1.6);
+        yaw += (ty - yaw) * e; pitch += (tp - pitch) * e;
+      }
       var k = 1 - Math.exp(-dt * 5);
       pieces.forEach(function (p) {
         p.s += ((p.show ? 1 : 0.0001) - p.s) * k * (p.show ? 1 : 1.4);
@@ -513,12 +463,11 @@ function mount(host, items, opt) {
         p.wrap.position.x += (p.tx - p.wrap.position.x) * k;
         p.wrap.position.y += (p.ty + Math.sin(t * 1.0 + p.ph) * 0.035 - p.wrap.position.y) * k;
         p.wrap.position.z += (p.tz - p.wrap.position.z) * k;
-        p.wrap.rotation.y = yaw;
       });
-      var half = camera.fov * Math.PI / 360, th = Math.tan(half), need = Math.max((box.h * 0.5 + 0.25) / th, (box.w * 0.5 + 0.25) / (th * camera.aspect));
-      dist += (need * 1.12 * zoom - dist) * (1 - Math.exp(-dt * 4));
+      var half = camera.fov * Math.PI / 360, th = Math.tan(half), need = Math.max((box.h * 0.5 + 0.2) / th, (box.w * 0.5 + 0.2) / (th * camera.aspect));
+      dist += (need * 1.1 * zoom - dist) * (1 - Math.exp(-dt * 4));
       var cp = Math.cos(pitch);
-      camera.position.set(0, Math.sin(pitch) * dist, cp * dist);
+      camera.position.set(Math.sin(yaw) * cp * dist, Math.sin(pitch) * dist, Math.cos(yaw) * cp * dist);
       camera.lookAt(0, 0, 0);
       var arr = sparks.pt.geometry.attributes.position.array;
       for (var i = 0; i < sparks.seeds.length; i++) arr[i * 3 + 1] = sparks.base[i * 3 + 1] + Math.sin(t * 0.5 + sparks.seeds[i]) * 0.25;
@@ -528,7 +477,7 @@ function mount(host, items, opt) {
     raf = requestAnimationFrame(frame);
     setTimeout(function () { hint.style.opacity = 0; }, 6000);
 
-    window.__v3 = { get yaw() { return yaw; }, set yaw(v) { yaw = v; auto = false; }, set pitch(v) { pitch = v; }, set zoom(v) { zoom = v; }, setFilter: function (k) { filter = k; layout(); }, pieces: pieces };
+    window.__v3 = { get yaw() { return yaw; }, set yaw(v) { yaw = v; auto = false; }, set pitch(v) { pitch = v; auto = false; }, set zoom(v) { zoom = v; }, setFilter: function (k) { filter = k; layout(); }, pieces: pieces };
 
     ctl.destroy = function () {
       ctl.dead = true; cancelAnimationFrame(raf);
