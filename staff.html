@@ -41,7 +41,8 @@ iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:var(
 /* Inbox */
 .inbox{height:100%;display:grid;grid-template-columns:minmax(300px,380px) 1fr;min-height:0}
 .q{overflow:auto;padding:14px;border-right:1px solid var(--line)}
-.q h2{font:400 12px/1 Poppins;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);margin:4px 4px 12px}
+.seg{display:flex;gap:6px;margin:2px 2px 14px}.seg button{flex:1;padding:10px 12px;border-radius:99px;border:1px solid var(--line);background:var(--card);font-size:13.5px;color:var(--mute)}.seg button.on{background:var(--soft);border-color:var(--pink);color:var(--ink)}
+.st.d{background:var(--okbg);color:var(--ok)}
 .card{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:10px}
 .card.sel{border-color:var(--pink);box-shadow:0 0 0 1px var(--pink)}
 .num{width:56px;height:56px;border-radius:12px;background:var(--soft);color:#72243e;font:500 20px/1 Poppins;display:flex;align-items:center;justify-content:center;flex:none}
@@ -85,11 +86,13 @@ const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",
 const fmt=n=>"EGP "+Math.round(n).toLocaleString("en-US");
 const LOCK_AFTER=5*60*1000, POLL=15000;
 
-let A={token:null,store:null,tab:"inbox",locked:true,orders:[],sel:null,known:null,unseen:new Set(),fresh:new Set(),pin:"",err:"",busy:false,offline:false,lastTouch:Date.now(),menuFor:null,inboxFilter:"all"};
+let A={token:null,store:null,tab:"inbox",locked:true,orders:[],sel:null,known:null,unseen:new Set(),fresh:new Set(),pin:"",err:"",busy:false,offline:false,lastTouch:Date.now(),menuFor:null,view:"waiting",done:[],doneBusy:false};
+const cur=()=>A.view=="done"?A.done:A.orders;
 
 const LOGO=h=>`<svg width="${Math.round(h*1433/2005)}" height="${h}" viewBox="0 0 1433 2005" aria-hidden="true"><use href="#lg"/></svg>`;
 
 function ago(t){const m=Math.floor((Date.now()-t)/60000);if(m<1)return"just now";if(m<60)return m+" min ago";const h=Math.floor(m/60);return h<24?h+" h ago":Math.floor(h/24)+" d ago"}
+function dwhen(t){const f={day:"numeric",month:"short",timeZone:"Africa/Cairo"},d=new Date(t).toLocaleDateString("en-GB",f),n=new Date().toLocaleDateString("en-GB",f);return(d==n?"Today":d)+" "+clock(t)}
 function clock(t){return new Date(t).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit",timeZone:"Africa/Cairo"})}
 
 /* ---------- rendering ---------- */
@@ -111,19 +114,22 @@ function detailHTML(o){
   if(!o)return `<div class="empty">Pick a list to see the pieces.</div>`;
   const tel=o.phone, wa="https://wa.me/2"+o.phone;
   const items=o.items.map(x=>`<div class="it"><div class="im">${x.im?`<img src="${B+esc(x.im)}${x.im.includes("?")?"&":"?"}width=240" alt="" onerror="this.remove()">`:""}</div><div class="t"><b>${esc(x.n)}</b><small>${x.s&&!/^one size$/i.test(x.s)?esc(x.s)+" · ":""}SKU ${esc(x.sku||"")}</small></div><div class="qn">× ${x.q}</div><div class="pr">${fmt(x.p*x.q)}</div></div>`).join("");
-  const acts=o.status=="new"?`<button class="btn p" data-act="serve" data-id="${esc(o.id)}">Start serving</button><button class="btn o" data-act="done" data-id="${esc(o.id)}">Mark done</button>`:`<button class="btn" data-act="done" data-id="${esc(o.id)}">Mark done</button>`;
-  return `<div class="dh"><div class="num">${esc(o.number)}</div><div><h1>${esc(o.name)}</h1><div class="meta">Sent ${clock(o.at)} · ${ago(o.at)} · ${o.itemCount} piece${o.itemCount==1?"":"s"}</div></div></div>
+  const isDone=o.status=="done";
+  const acts=isDone?"":o.status=="new"?`<button class="btn p" data-act="serve" data-id="${esc(o.id)}">Start serving</button><button class="btn o" data-act="done" data-id="${esc(o.id)}">Mark done</button>`:`<button class="btn" data-act="done" data-id="${esc(o.id)}">Mark done</button>`;
+  return `<div class="dh"><div class="num">${esc(o.number)}</div><div><h1>${esc(o.name)}</h1><div class="meta">${isDone?`Sent ${dwhen(o.at)} · Done ${dwhen(o.doneAt||o.at)}`:`Sent ${clock(o.at)} · ${ago(o.at)}`} · ${o.itemCount} piece${o.itemCount==1?"":"s"}</div></div></div>
   <div class="links"><a class="pill" href="tel:${esc(tel)}">Call ${esc(tel)}</a><a class="pill" href="${wa}" target="_blank" rel="noopener">WhatsApp</a></div>
-  <div class="acts">${acts}</div><div class="lab">Pieces</div>${items}<div class="tot"><span>Total</span><b style="font-weight:500">${fmt(o.total)}</b></div>`;
+  ${acts?`<div class="acts">${acts}</div>`:""}<div class="lab">Pieces</div>${items}<div class="tot"><span>Total</span><b style="font-weight:500">${fmt(o.total)}</b></div>`;
 }
 function listHTML(){
-  if(!A.orders.length)return `<div class="empty">No lists waiting.<br>New ones show up here by themselves.</div>`;
-  return A.orders.map(o=>`<button class="card ${A.sel==o.id?"sel":""} ${A.fresh.has(o.id)?"fresh":""}" data-open="${esc(o.id)}"><div class="num">${esc(o.number)}</div><div class="who"><b>${esc(o.name)}</b><small>${o.itemCount} piece${o.itemCount==1?"":"s"} · ${ago(o.at)}</small></div><span class="st ${o.status=="serving"?"s":""}">${o.status=="serving"?"Being served":"New"}</span></button>`).join("");
+  const L=cur();
+  if(A.view=="done"&&A.doneBusy&&!L.length)return `<div class="empty">Loading…</div>`;
+  if(!L.length)return A.view=="done"?`<div class="empty">No finished lists yet.<br>Lists you mark done show up here for 30 days.</div>`:`<div class="empty">No lists waiting.<br>New ones show up here by themselves.</div>`;
+  return L.map(o=>`<button class="card ${A.sel==o.id?"sel":""} ${A.fresh.has(o.id)?"fresh":""}" data-open="${esc(o.id)}"><div class="num">${esc(o.number)}</div><div class="who"><b>${esc(o.name)}</b><small>${o.itemCount} piece${o.itemCount==1?"":"s"} · ${o.status=="done"?"done "+dwhen(o.doneAt||o.at):ago(o.at)}</small></div><span class="st ${o.status=="serving"?"s":o.status=="done"?"d":""}">${o.status=="serving"?"Being served":o.status=="done"?"Done":"New"}</span></button>`).join("");
 }
 function inboxView(){
   if(A.locked)return pinView("Inbox is locked","Enter your store PIN to see the lists");
-  const sel=A.orders.find(o=>o.id==A.sel);
-  return `<div class="inbox"><div class="q"><h2>Waiting · ${A.orders.length}</h2><div id="ql">${listHTML()}</div></div><div class="det" id="dt">${detailHTML(sel)}</div></div>`;
+  const sel=cur().find(o=>o.id==A.sel);
+  return `<div class="inbox"><div class="q"><div class="seg"><button data-view="waiting" class="${A.view=="done"?"":"on"}">Waiting · <span id="wc">${A.orders.length}</span></button><button data-view="done" class="${A.view=="done"?"on":""}">Done</button></div><div id="ql">${listHTML()}</div></div><div class="det" id="dt">${detailHTML(sel)}</div></div>`;
 }
 function render(){
   const r=$("root");
@@ -139,8 +145,8 @@ function refresh(){
   if(A.tab=="inbox"&&!A.locked){
     const ql=$("ql"),dt=$("dt");
     if(!ql||!dt){ib.innerHTML=inboxView()}else{
-      ql.innerHTML=listHTML();dt.innerHTML=detailHTML(A.orders.find(o=>o.id==A.sel));
-      const h=document.querySelector(".q h2");if(h)h.textContent="Waiting · "+A.orders.length}
+      ql.innerHTML=listHTML();dt.innerHTML=detailHTML(cur().find(o=>o.id==A.sel));
+      const h=$("wc");if(h)h.textContent=A.orders.length}
   }
   const b=document.querySelector(".bdg");if(b){b.textContent=A.unseen.size;b.hidden=!A.unseen.size}
   document.title=(A.unseen.size?`(${A.unseen.size}) `:"")+"Pandora staff";
@@ -183,13 +189,33 @@ async function poll(){
     A.known=ids;
     A.orders=j.orders.slice().sort((a,b)=>b.at-a.at);
     A.unseen.forEach(id=>{if(!ids.has(id))A.unseen.delete(id)});
-    if(A.sel&&!ids.has(A.sel))A.sel=null;
-    if(!A.sel&&A.orders.length&&A.tab=="inbox"&&!A.locked&&window.innerWidth>760)A.sel=A.orders[0].id;
+    if(A.view!="done"&&A.sel&&!ids.has(A.sel))A.sel=null;
+    if(A.view!="done"&&!A.sel&&A.orders.length&&A.tab=="inbox"&&!A.locked&&window.innerWidth>760)A.sel=A.orders[0].id;
+    if(A.view=="done")loadDone();
     const off=document.querySelector(".net");if(off)off.remove();
     refresh();
   }catch(e){
     if(!A.offline){A.offline=true;const s=document.querySelector(".store");if(s&&!document.querySelector(".net"))s.insertAdjacentHTML("afterend",'<span class="net">Offline, retrying…</span>')}
   }
+}
+async function loadDone(){
+  if(!A.token)return;
+  A.doneBusy=true;
+  try{
+    const{r,j}=await api("/api/inbox?view=done");
+    if(r.status==401){A.token=null;A.store=null;A.known=null;A.v=null;A.pin="";A.err="Session ended. Enter your PIN again.";return render()}
+    if(!r.ok||!j.ok)throw 0;
+    A.done=j.orders;A.offline=false;
+    if(A.view=="done"&&!A.sel&&A.done.length&&window.innerWidth>760)A.sel=A.done[0].id;
+  }catch(e){}
+  A.doneBusy=false;refresh();
+}
+function setView(v){
+  if(A.view==v)return;
+  A.view=v;A.sel=null;
+  const ib=$("ib");if(ib)ib.innerHTML=inboxView();
+  if(v=="done"){loadDone()}
+  else{A.done=[];if(A.orders.length&&window.innerWidth>760)A.sel=A.orders[0].id;refresh()}
 }
 async function login(){
   if(A.busy||A.pin.length<4)return;
@@ -210,6 +236,7 @@ function refreshPin(){const ib=$("ib");if(ib)ib.innerHTML=inboxView();else rende
 async function setStatus(id,status){
   const{r,j}=await api("/api/order-status",{method:"POST",body:JSON.stringify({id,status})});
   if(r.status==401){A.token=null;return render()}
+  if(status=="done"&&r.ok){A.done=[]}
   if(status=="done"){A.orders=A.orders.filter(o=>o.id!=id);A.sel=A.orders.length&&window.innerWidth>760?A.orders[0].id:null}
   else{const o=A.orders.find(o=>o.id==id);if(o&&r.ok)o.status="serving"}
   refresh();poll();
@@ -224,11 +251,13 @@ document.addEventListener("click",e=>{
     if(A.pin.length==6)login();return}
   const tab=e.target.closest("[data-tab]");
   if(tab){A.tab=tab.dataset.tab;if(A.tab=="inbox"&&!A.locked){A.unseen.clear();if(!A.sel&&A.orders.length&&window.innerWidth>760)A.sel=A.orders[0].id}A.pin="";A.err="";render();return}
+  const vw=e.target.closest("[data-view]");
+  if(vw){setView(vw.dataset.view);return}
   const op=e.target.closest("[data-open]");
   if(op){A.sel=op.dataset.open;A.unseen.delete(A.sel);refresh();return}
   const act=e.target.closest("[data-act]");
   if(act){const a=act.dataset.act;
-    if(a=="lock"){A.locked=true;A.pin="";A.err="";A.sel=null;render()}
+    if(a=="lock"){A.locked=true;A.pin="";A.err="";A.sel=null;A.view="waiting";A.done=[];render()}
     else if(a=="serve")setStatus(act.dataset.id,"serving");
     else if(a=="done")setStatus(act.dataset.id,"done");
     else if(a=="openban"){$("ban").classList.remove("show");A.tab="inbox";A.pin="";render()}
@@ -243,7 +272,7 @@ document.addEventListener("keydown",e=>{
 ["pointerdown","keydown","touchstart"].forEach(t=>document.addEventListener(t,()=>{A.lastTouch=Date.now()},{passive:true}));
 /* touches inside the menu iframe do not reach this page, so poll the iframe's activity through focus + a gentle timer */
 setInterval(()=>{
-  if(A.token&&!A.locked&&Date.now()-A.lastTouch>LOCK_AFTER&&A.tab=="inbox"){A.locked=true;A.sel=null;A.pin="";render()}
+  if(A.token&&!A.locked&&Date.now()-A.lastTouch>LOCK_AFTER&&A.tab=="inbox"){A.locked=true;A.sel=null;A.pin="";A.view="waiting";A.done=[];render()}
   if(A.token&&!A.locked&&A.tab=="inbox"){const q=$("ql");if(q)q.innerHTML=listHTML()}
 },30000);
 setInterval(poll,POLL);

@@ -18,7 +18,11 @@ module.exports = async function handler(req, res) {
     o.status = status;
     o[status === 'done' ? 'doneAt' : 'servingAt'] = Date.now();
     await redis(['SET', key, JSON.stringify(o), 'KEEPTTL']); // keeps the original 30-day clock
-    if (status === 'done') await redis(['ZREM', `pm:a:${store}`, id]);
+    if (status === 'done') {
+      await redis(['ZREM', `pm:a:${store}`, id]);
+      await redis(['ZADD', `pm:d:${store}`, o.doneAt, id]); // the store's finished lists, for review
+      await redis(['ZREMRANGEBYSCORE', `pm:d:${store}`, 0, Date.now() - 30 * 24 * 3600 * 1000]);
+    }
     await redis(['INCR', `pm:v:${store}`]);
     return send(res, 200, { ok: true, id, status });
   } catch (e) {
