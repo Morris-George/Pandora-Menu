@@ -309,16 +309,18 @@ function mount(host, items, opt) {
           var y = pt.y - (c.dangle ? c.h * 0.36 : 0) - r * avgH * 0.55;
           var z = 0.006 + r * 0.004 + ci * 0.0004;
           var holder = new T.Group(); holder.position.set(pt.x, y, z);
-          holder.rotation.z = clamp(pt.sl, -0.7, 0.7) * 0.45;
+          holder.rotation.z = clamp(pt.sl, -0.7, 0.7) * 0.9;
           if (c.dangle) { var sh = shadowPlane(c.w * 1.1, c.h * 0.5); sh.position.set(c.w * 0.04, -c.h * 0.32, -0.003); holder.add(sh); }
           holder.add(c.mesh); g.add(holder);
           c.mesh.renderOrder = 1;
           if (!c.dangle && arc && base && base.mesh.material.map) {            // the real chain photo drawn again over the charm's middle, so the chain runs through it
-            var hw = Math.min(c.w * 0.2, 0.16), hh = Math.max(0.025, arc.thick * kx * 0.42), x0 = pt.x - hw, x1 = pt.x + hw, y0 = pt.y - hh, y1 = pt.y + hh;
+            var hh = Math.max(0.03, arc.thick * kx * 0.42), hw = hh * 1.5, x0 = pt.x - hw, x1 = pt.x + hw, y0 = pt.y - hh, y1 = pt.y + hh;
             var sg = track(new T.PlaneGeometry(2 * hw, 2 * hh)), uv = sg.attributes.uv;
             var u0 = x0 / kx / cut.w + 0.5, u1 = x1 / kx / cut.w + 0.5, v0 = y0 / (kx * cut.h) + 0.5, v1 = y1 / (kx * cut.h) + 0.5;
             uv.setXY(0, u0, v1); uv.setXY(1, u1, v1); uv.setXY(2, u0, v0); uv.setXY(3, u1, v0); uv.needsUpdate = true;
-            var st = new T.Mesh(sg, base.mesh.material); st.position.set(pt.x, pt.y, z + 0.004); st.renderOrder = 2; g.add(st);
+            var ho = new T.Mesh(track(new T.PlaneGeometry(hw * 3.4, hh * 3.6)), shMat); ho.position.set(pt.x, pt.y, z + 0.002); ho.renderOrder = 2; g.add(ho);   // dark opening of the charm's hole
+            var ho2 = new T.Mesh(ho.geometry, shMat); ho2.scale.set(0.8, 0.8, 1); ho2.position.set(pt.x, pt.y, z + 0.003); ho2.renderOrder = 2; g.add(ho2);
+            var st = new T.Mesh(sg, base.mesh.material); st.position.set(pt.x, pt.y, z + 0.004); st.renderOrder = 3; g.add(st);
           }
           c.holder = holder;
           minY = Math.min(minY, y - c.h / 2); minX = Math.min(minX, pt.x - c.w / 2); maxX = Math.max(maxX, pt.x + c.w / 2); maxY = Math.max(maxY, y + c.h / 2);
