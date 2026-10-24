@@ -314,7 +314,7 @@ function mount(host, items, opt) {
           holder.add(c.mesh); g.add(holder);
           c.mesh.renderOrder = 1;
           if (!c.dangle && arc && base && base.mesh.material.map) {            // the real chain photo drawn again over the charm's middle, so the chain runs through it
-            var hw = c.w * 0.46, hh = Math.max(0.03, arc.thick * kx * 0.6), x0 = pt.x - hw, x1 = pt.x + hw, y0 = pt.y - hh, y1 = pt.y + hh;
+            var hw = Math.min(c.w * 0.2, 0.16), hh = Math.max(0.025, arc.thick * kx * 0.42), x0 = pt.x - hw, x1 = pt.x + hw, y0 = pt.y - hh, y1 = pt.y + hh;
             var sg = track(new T.PlaneGeometry(2 * hw, 2 * hh)), uv = sg.attributes.uv;
             var u0 = x0 / kx / cut.w + 0.5, u1 = x1 / kx / cut.w + 0.5, v0 = y0 / (kx * cut.h) + 0.5, v1 = y1 / (kx * cut.h) + 0.5;
             uv.setXY(0, u0, v1); uv.setXY(1, u1, v1); uv.setXY(2, u0, v0); uv.setXY(3, u1, v0); uv.needsUpdate = true;
