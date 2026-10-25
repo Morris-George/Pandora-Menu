@@ -104,7 +104,7 @@ html[dir=rtl] .tile svg{right:auto;left:10px}
 html[dir=rtl] .sb svg{left:auto;right:16px}
 html[dir=rtl] .sb button{right:auto;left:8px}
 html[dir=rtl] #fp{direction:ltr;text-align:right}
-html[dir=rtl] .wt{font-family:'Aref Ruqaa',Cairo,serif!important;transform:none!important;font-size:clamp(40px,10vw,66px)!important;line-height:1.6!important;padding-left:0!important;font-weight:400}
+html[dir=rtl] .wt{letter-spacing:.1em!important}
 @media (min-width:800px){html[dir=rtl] .tile svg{left:50%;right:auto}}
 </style></head>
 <body>
@@ -144,8 +144,7 @@ const ARD={
 "Studs":"ستود","Hoops":"هوب","Dangles":"دانجل","Clips":"كليب","Medallions":"ميداليات","Chains":"سلاسل","Spacers":"سبيسر",
 "Hearts":"قلوب","Flowers":"زهور","Butterflies":"فراشات","Stars":"نجوم","Moon":"قمر","Sun":"شمس","Animals":"حيوانات","Disney":"ديزني","Marvel":"مارفل","Family & friends":"العائلة والأصدقاء","Letters":"حروف","Infinity":"اللانهاية","Bows":"فيونكات","Crowns & royal":"تيجان وملكي","Lucky & faith":"حظ وإيمان","Zodiac":"الأبراج","Sport":"رياضة","Glow in the dark":"يتوهج في الظلام","Winter & Christmas":"الشتاء والكريسماس","Nature":"طبيعة",
 "Engagement & bridal":"خطوبة وزفاف",
-"For him":"له","For her":"لها","In stock":"متوفر","Small & mini":"صغير ومصغّر","Statement":"قطع لافتة","Simple & delicate":"بسيط ورقيق","Budget-friendly":"اقتصادي","Luxury":"فاخر",
-"CFC":"CFC","Point 90":"بوينت 90","City Centre Almaza":"سيتي سنتر ألماظة","City Stars":"سيتي ستارز","Mall Of Egypt":"مول مصر","Mall Of Arabia":"مول العرب","CC Alexandria":"سيتي سنتر الإسكندرية"
+"For him":"له","For her":"لها","In stock":"متوفر","Small & mini":"صغير ومصغّر","Statement":"قطع لافتة","Simple & delicate":"بسيط ورقيق","Budget-friendly":"اقتصادي","Luxury":"فاخر"
 };
 const t=s=>(LANG=="ar"&&typeof s=="string"&&Object.prototype.hasOwnProperty.call(ARD,s))?ARD[s]:s;
 const tt=(en,ar)=>LANG=="ar"?ar:en;
@@ -372,7 +371,7 @@ function sugHTML(){
  return`<div class="lab" style="margin-top:6px">${t("Pairs well with your list")}</div><div class="sg">${L.map(p=>{const one=p.z.length<2;return`<div class="sgc"><button class="sgi" data-a="sugopen" data-v="${p.i}">${ph(p)}<b>${esc(p.n)}</b></button><div class="sgf"><span>${fmt(p.p)}</span><button class="sga" data-a="${one?"sugadd":"sugopen"}" data-v="${p.i}">${one?t("+ Add"):t("Choose size")}</button></div></div>`}).join("")}</div>`;
 }
 function V(){const a=S.scr;
- if(a=="welcome")return`<div class="fade" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;cursor:pointer"><div style="color:var(--ink)">${LOGO(120)}</div><div style="width:60px;border-top:2px solid var(--pink);margin:30px 0 28px"></div><div class="brand wt" style="font-family:'Herr Von Muellerhoff',cursive;font-size:clamp(42px,10vw,76px);font-weight:400;letter-spacing:.1em;text-transform:none;line-height:1.15;justify-content:center;white-space:nowrap;transform:scaleX(1.12);transform-origin:center;padding-left:.1em">${tt("Discovery Menu","قائمة الاكتشاف")}</div><div class="mute" style="font-size:11px;letter-spacing:.14em;margin-top:26px;opacity:.8">${tt("TAP ANYWHERE TO BEGIN","اضغط في أي مكان للبدء")}</div></div>`;
+ if(a=="welcome")return`<div class="fade" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;cursor:pointer"><div style="color:var(--ink)">${LOGO(120)}</div><div style="width:60px;border-top:2px solid var(--pink);margin:30px 0 28px"></div><div class="brand wt" style="font-family:'Herr Von Muellerhoff',cursive;font-size:clamp(42px,10vw,76px);font-weight:400;letter-spacing:.1em;text-transform:none;line-height:1.15;justify-content:center;white-space:nowrap;transform:scaleX(1.12);transform-origin:center;padding-left:.1em">Discovery Menu</div><div class="mute" style="font-size:11px;letter-spacing:.14em;margin-top:26px;opacity:.8">${tt("TAP ANYWHERE TO BEGIN","اضغط في أي مكان للبدء")}</div></div>`;
  if(a=="store")return`<div class="fade nar">${tp("Back","welcome")}<h1 style="margin-top:18px">${tt("Which store<br>are you in?","في أي فرع<br>أنت الآن؟")}</h1><div class="opts">${STORES.map(x=>`<button class="opt ${S.store==x?"on":""}" data-a="store" data-v="${esc(x)}"><span>${esc(t(x))}</span></button>`).join("")}</div></div>`;
  if(a=="cats")return`<div class="fade cw" style="flex:1;display:flex;flex-direction:column"><h1>${tt("What are you<br>looking for?","ماذا تبحث<br>عنه؟")}</h1><div class="grid">${[0,1,2,3].map(i=>`<button class="tile" data-a="cat" data-v="${i}"><svg viewBox="0 0 84 84">${IC[i]}</svg>${smp(i)}${t(CATS[i][1])}<small>${t(TAG[i])}</small></button>`).join("")}<button class="tile w" data-a="cat" data-v="4"><svg viewBox="0 0 84 84" style="top:30px;right:22px">${IC[4]}</svg>${smp(4)}${t("Charms")}<small>${t(TAG[4])}</small></button></div><div class="foot"><button class="ul" data-a="cat" data-v="all">${tt("Not sure? Help me choose","ساعدني في الاختيار")}</button><button class="mute" data-a="start">${t("Start over")}</button></div></div>`;
  if(a=="finder"){const n=S.step,cn=t(S.lux?"Categories":S.cat==null?"Categories":CATS[S.cat][1].replace(" & pendants",""));const key=FS()[n],Q=QT(key);
