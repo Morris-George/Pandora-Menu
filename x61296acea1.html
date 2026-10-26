@@ -128,7 +128,7 @@ function shell(inner){
 function detailHTML(o){
   if(!o)return `<div class="empty">Pick a list to see the pieces.</div>`;
   const tel=o.phone, wa="https://wa.me/2"+o.phone;
-  const items=o.items.map(x=>`<div class="it"><div class="im">${x.im?`<img src="${B+esc(x.im)}${x.im.includes("?")?"&":"?"}width=240" alt="" onerror="this.remove()">`:""}</div><div class="t"><b>${esc(x.n)}</b><small>${x.s&&!/^one size$/i.test(x.s)?esc(x.s)+" · ":""}SKU ${esc(x.sku||"")}</small></div><div class="qn">× ${x.q}</div><div class="pr">${fmt(x.p*x.q)}</div></div>`).join("");
+  const items=o.items.map(x=>`<div class="it"><div class="im">${x.im?`<img src="${x.im.charAt(0)=="/"?esc(x.im):B+esc(x.im)+(x.im.includes("?")?"&":"?")+"width=240"}" alt="" onerror="this.remove()">`:""}</div><div class="t"><b>${esc(x.n)}</b><small>${x.s&&!/^one size$/i.test(x.s)?esc(x.s)+" · ":""}SKU ${esc(x.sku||"")}</small></div><div class="qn">× ${x.q}</div><div class="pr">${fmt(x.p*x.q)}</div></div>`).join("");
   const isDone=o.status=="done";
   const acts=isDone?"":o.status=="new"?`<button class="btn p" data-act="serve" data-id="${esc(o.id)}">Start serving</button><button class="btn o" data-act="done" data-id="${esc(o.id)}">Mark done</button>`:`<button class="btn" data-act="done" data-id="${esc(o.id)}">Mark done</button>`;
   return `<div class="dh"><div class="num">${esc(o.number)}</div><div><h1>${esc(o.name)}</h1><div class="meta">${isDone?`Sent ${dwhen(o.at)} · Done ${dwhen(o.doneAt||o.at)}`:`Sent ${clock(o.at)} · ${ago(o.at)}`} · ${o.itemCount} piece${o.itemCount==1?"":"s"}</div></div></div>

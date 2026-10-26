@@ -30,7 +30,7 @@ module.exports = async function handler(req, res) {
       n: clean(x && x.n, 140),
       s: clean(x && x.s, 40),
       sku: clean(x && x.sku, 40),
-      im: /^[\w\-.%\/]{1,160}\.(jpe?g|png|webp)(\?v=\d{1,14})?$/i.test(String(x && x.im || '')) ? String(x.im) : '', // photo path on the store's CDN; the staff page adds the host itself
+      im: (/^[\w\-.%\/]{1,160}\.(jpe?g|png|webp)(\?v=\d{1,14})?$/i.test(String(x && x.im || '')) || /^\/api\/item-image\?f=[\w\-.%]{1,400}&s=[\w\-]{20,64}$/.test(String(x && x.im || ''))) ? String(x.im) : '', // photo path on the store's CDN (the staff page adds the host itself), or a menu-served ERP photo link
       p: Math.max(0, Math.min(1e7, Number(x && x.p) || 0)),
       q: Math.max(1, Math.min(20, Number(x && x.q) | 0))
     })).filter(x => x.n);

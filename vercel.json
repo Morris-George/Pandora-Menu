@@ -37,5 +37,10 @@
         }
       ]
     }
-  ]
+  ],
+  "functions": {
+    "api/catalog.js": {
+      "includeFiles": "index.html"
+    }
+  }
 }
