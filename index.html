@@ -241,7 +241,7 @@ const OCX={
  Christmas:(p,n)=>/christmas|xmas|santa|snowflakes?|snowman|snow ?globe|reindeer|gingerbread|nutcracker|wreath|ornament|bauble|mistletoe|sleigh|candy cane|stocking|holly|polar ?bears?|winter/.test(n)&&!/snow white/.test(n),
  Halloween:(p,n)=>!/marvel|spider-man/.test(n)&&/halloween|pumpkin(?! coach)|ghost|\bboo\b|skull|coffin|black cat|skellington|scarecrow|haunted|witch|\bbats?\b|spider|cobweb|vampire|zombie|candy corn|oogie|hocus pocus|addams|beetlejuice/.test(n)&&!/cinderella/.test(n),
  Travel:(p,n)=>TRVX.test(n.replace(/snow ?globe/g," "))&&!/marvel|spider/.test(n),
- "New pet":(p,n)=>PETX.test(n)&&!/horse ?shoe|disney|marvel|black cat|cheshire|halloween|lion|leopard|tiger|cat ?woman/.test(n),
+ "New pet":(p,n)=>p.h.includes("Animals and Pets")||PETX.test(n)&&!/horse ?shoe|disney|marvel|black cat|cheshire|halloween|lion|leopard|tiger|cat ?woman/.test(n),
  "Mother's Day":(p,n)=>/\b(mum|mom|mother|mama|mommy|nan|nana|grandma|grandmother|granny|family|family tree|tree of life|home)\b/.test(n)&&!KIDX.test(n),
  "New baby":(p,n)=>/\b(baby|babies|pacifier|stroller|pram|rattle|footprints?|teddy|stork|newborn|boy|girl|bib|onesie|cradle)\b/.test(n)&&!KIDX.test(n)
 };
