@@ -108,31 +108,48 @@ html[dir=rtl] .wt{letter-spacing:.1em!important}
 @media (min-width:800px){html[dir=rtl] .tile svg{left:50%;right:auto}}
 </style>
 <style>
-.stg{display:grid;grid-template-columns:1fr;gap:18px;margin:6px 0 26px}
-.stgl,.stgp{background:var(--bg)}
-.stgt{font-size:11px;letter-spacing:.16em;color:var(--mute);margin-bottom:10px}
-.stgr{position:relative;height:300px;overflow:hidden;touch-action:pan-y;-webkit-user-select:none;user-select:none;direction:ltr;cursor:grab;--bw:46%;--k1:84%;--k2:16%}
+.stg{display:grid;grid-template-columns:1fr;gap:22px;margin:10px 0 34px}
+.stgl,.stgp,.stgs{background:var(--bg);min-width:0}
+.stgt{display:block;font-size:11px;letter-spacing:.18em;color:var(--mute);margin-bottom:10px}
+.stgtop{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.stgbd{font-size:12px;letter-spacing:.06em;padding:6px 14px;border-radius:99px;background:var(--ink);color:var(--bg);white-space:nowrap}
+.stgw{position:relative}
+.stgno{position:absolute;left:0;top:4px;font:italic 400 clamp(64px,12vw,150px)/1 Lora,serif;color:var(--line);pointer-events:none;letter-spacing:-.02em}
+.stgno.sw{animation:stgno .5s both}@keyframes stgno{from{opacity:0;transform:translateY(14px)}}
+.stgr{position:relative;height:360px;overflow:hidden;touch-action:pan-y;-webkit-user-select:none;user-select:none;direction:ltr;cursor:grab;--bw:64%;--k1:74%;--k2:13%}
+.stgr::before{content:"";position:absolute;left:50%;top:50%;width:min(92%,560px);aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,#fff 0%,rgba(255,255,255,.75) 38%,rgba(255,154,162,.16) 62%,rgba(255,154,162,0) 72%)}
+.stgr::after{content:"";position:absolute;left:50%;top:50%;width:calc(var(--bw)*.7);height:22px;margin-top:calc(var(--bw)*.42);transform:translateX(-50%);border-radius:50%;background:radial-gradient(ellipse at center,rgba(74,47,53,.22),rgba(74,47,53,0) 70%)}
 .stgr.drag{cursor:grabbing}
-.stc{position:absolute;top:0;left:calc(50% - var(--bw)/2);width:var(--bw);height:100%;object-fit:contain;object-position:center bottom;mix-blend-mode:multiply;transform-origin:center bottom;transform:translateX(calc(var(--o)*(var(--k1) - var(--d)*var(--k2)) + var(--dx,0px))) scale(calc(1 - var(--d)*.2));opacity:calc(1 - var(--d)*.3);filter:blur(calc(var(--d)*1px));z-index:calc(10 - var(--d));transition:transform .5s cubic-bezier(.2,.8,.2,1),opacity .5s,filter .5s;cursor:pointer;-webkit-user-drag:none}
+.stc{position:absolute;top:50%;left:calc(50% - var(--bw)/2);width:var(--bw);aspect-ratio:1;height:auto;margin-top:calc(var(--bw)/-2);object-fit:contain;mix-blend-mode:multiply;transform-origin:center;transform:translateX(calc(var(--o)*(var(--k1) - var(--d)*var(--k2)) + var(--dx,0px))) scale(calc(1.12 - var(--d)*.36));opacity:calc(1 - var(--d)*.32);filter:blur(calc(var(--d)*1.4px)) saturate(calc(1 - var(--d)*.25));z-index:calc(10 - var(--d));transition:transform .6s cubic-bezier(.2,.8,.2,1),opacity .6s,filter .6s;cursor:pointer;-webkit-user-drag:none}
+.stc.f{animation:bob 4s ease-in-out infinite}@keyframes bob{50%{translate:0 -8px}}
 .stgr.drag .stc{transition:none}
-svg.stc.ic{stroke:var(--pink);fill:none;stroke-width:2.5;padding:20%}
-.stgnav{display:flex;align-items:center;justify-content:center;gap:18px;margin-top:10px;font-size:13px;color:var(--mute)}
-.stga{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);font-size:22px;line-height:1;color:var(--ink)}
-.stgh{text-align:center;font-size:12px;color:var(--mute);margin-top:6px}
-.stgm{display:flex;justify-content:space-between;gap:14px;align-items:flex-start}.stgn1{flex:1;min-width:0}
-.stgnm{font:400 19px/1.3 Lora,serif;text-align:start;color:var(--ink)}.stgpr{margin-top:6px;font-size:15px}
-.stgd{color:var(--mute);font-size:13.5px;margin:12px 0 10px}.stgv{font-size:13px}
-.pl{flex:none;width:34px;height:34px;border-radius:50%;border:1px solid var(--pink);color:var(--pinkd);font-size:20px;line-height:1;display:flex;align-items:center;justify-content:center}
-.pl.big{width:52px;height:52px;font-size:28px;background:var(--pink);color:#4a2f35;border:none;box-shadow:0 8px 20px -10px rgba(201,123,139,.8)}
-.pl.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
-.stgp.sw>*{animation:stgin .35s both}
-.stgi{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line)}
-.stgb{display:flex;align-items:center;gap:12px;flex:1;min-width:0;text-align:start}
-.stgth{width:60px;height:60px;flex:none;object-fit:contain;mix-blend-mode:multiply}svg.stgth.ic{stroke:var(--pink);fill:none;stroke-width:2.5;padding:12px}
-.stgn{display:flex;flex-direction:column;min-width:0}.stgn b{font-weight:400;font-size:13px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.stgn small{color:var(--mute);font-size:12px}
-@keyframes stgin{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:none}}
-@media(min-width:620px){.stg{grid-template-columns:1.5fr 1fr;gap:32px}.stgr{height:360px;--bw:32%;--k1:92%;--k2:12%}.stgp{border-inline-start:1px solid var(--line);padding-inline-start:28px}}
-@media(min-width:900px){.stgr{height:440px}}
+svg.stc.ic{stroke:var(--pink);fill:none;stroke-width:2.5;padding:22%}
+.stga{position:absolute;top:50%;z-index:20;transform:translateY(-50%);width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.85);box-shadow:0 6px 18px -8px rgba(74,47,53,.4);font-size:26px;line-height:1;color:var(--ink);backdrop-filter:blur(6px)}
+.stga.l{left:0}.stga.r{right:0}
+.stgdots{display:flex;justify-content:center;gap:8px;margin-top:6px}
+.stgdots button{width:22px;height:4px;border-radius:4px;background:var(--line);transition:all .35s}.stgdots button.on{width:44px;background:var(--pink)}
+.stgh{text-align:center;font-size:12px;color:var(--mute);margin-top:12px}
+.stgph{position:relative;aspect-ratio:5/4;border-radius:22px;overflow:visible;margin-bottom:22px;background:#fff}
+.stgph img{width:100%;height:100%;border-radius:22px;display:block}
+.stgph.mo img{object-fit:cover}.stgph.al{background:none}.stgph.al img{object-fit:contain;mix-blend-mode:multiply}
+.stgph.none{aspect-ratio:auto;height:0;margin-bottom:40px}
+.stgchip{position:absolute;left:14px;top:14px;font-size:11px;letter-spacing:.08em;padding:5px 12px;border-radius:99px;background:rgba(255,255,255,.88);color:var(--ink)}
+.stgph .pl.big{position:absolute;right:16px;bottom:-26px}
+.stgnm{display:block;font:400 26px/1.25 Lora,serif;text-align:start;color:var(--ink)}.stgpr{margin-top:8px;font-size:17px}
+.stgd{color:var(--mute);font-size:14px;margin:12px 0 12px}.stgv{font-size:13.5px}
+.pl{flex:none;width:40px;height:40px;border-radius:50%;border:1px solid var(--pink);background:var(--bg);color:var(--pinkd);font-size:22px;line-height:1;display:flex;align-items:center;justify-content:center;transition:transform .2s}
+.pl:active{transform:scale(.9)}
+.pl.big{width:60px;height:60px;font-size:32px;background:var(--pink);color:#4a2f35;border:3px solid var(--bg);box-shadow:0 10px 24px -10px rgba(201,123,139,.9)}
+.pl.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}.pl.big.on{border-color:var(--bg)}
+.stgp.sw>*,.stgs.sw .stgsc{animation:stgin .45s both}.stgs.sw .stgsc:nth-child(2){animation-delay:.07s}.stgs.sw .stgsc:nth-child(3){animation-delay:.14s}
+.stgsh{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 14px;padding-top:22px;border-top:1px solid var(--line);margin-bottom:14px;font-size:13px}
+.stgsg{display:grid;grid-auto-flow:column;grid-auto-columns:72%;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:6px}
+.stgsc{scroll-snap-align:start;display:flex;flex-direction:column;border:1px solid var(--line);border-radius:20px;padding:14px;background:var(--bg)}
+.stgsi{display:block;width:100%}.stgsim{display:block;width:100%;aspect-ratio:1;object-fit:contain;mix-blend-mode:multiply}svg.stgsim.ic{stroke:var(--pink);fill:none;stroke-width:2.5;padding:25%}
+.stgsf{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;margin-top:10px}.stgsf b{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-weight:400;font-size:14px;line-height:1.35}.stgsf small{display:block;color:var(--mute);font-size:12.5px;margin-top:4px}
+@keyframes stgin{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@media(min-width:620px){.stg{grid-template-columns:1.4fr 1fr;gap:26px 40px}.stgs{grid-column:1/-1}.stgr{height:460px;--bw:52%;--k1:76%;--k2:13%}.stgsg{grid-auto-flow:row;grid-template-columns:repeat(3,1fr);overflow:visible}.stgp{padding-top:30px}}
+@media(min-width:900px){.stgr{height:540px}.stgsc{padding:18px}.stgsf b{font-size:15px}}
 </style>
 </head>
 <body>
@@ -361,11 +378,15 @@ const pairs=p=>{const sc=D.filter(x=>x.s&&x.c!=p.c).map(x=>{let s=0;if(x.m==p.m)
 const inL=id=>Object.values(S.list).some(x=>x.id==id);
 const cut=(p,w,c)=>p.im&&p.im[0]?`<img class="${c}" src="${B+p.im[0]}&width=${w}" alt="" draggable="false" onerror="this.outerHTML='<svg class=&quot;${c} ic&quot; viewBox=&quot;0 0 84 84&quot;>${IC[p.c].replace(/"/g,"&quot;")}</svg>'">`:`<svg class="${c} ic" viewBox="0 0 84 84">${IC[p.c]}</svg>`;
 const plusBtn=(p,big)=>{const one=p.z.length<2,on=inL(p.i);return`<button class="pl ${big?"big":""} ${on?"on":""}" data-a="${one?"quick":"open"}" data-v="${p.i}" aria-label="${one?(on?tt("Remove from list","إزالة"):tt("Add to list","أضف")):tt("Choose size","اختر المقاس")}">${on?"✓":"+"}</button>`};
-const stgPanel=p=>{const pr=pairs(p);return`<div class="stgt">${tt("IN THIS MATCH","في هذا الاختيار")}</div><div class="stgm"><div class="stgn1"><button class="stgnm" data-a="open" data-v="${p.i}">${esc(p.n)}</button><div class="stgpr">${fmt(p.p)}${p.z.length<2?"":` · <span class="mute">${tt("choose size","اختر المقاس")}</span>`}</div></div>${plusBtn(p,1)}</div><p class="stgd">${DESC(p)}</p><button class="ul stgv" data-a="open" data-v="${p.i}">${tt("View details","عرض التفاصيل")}</button>`+
- (pr.length?`<div class="stgt" style="margin-top:22px">${tt("WEAR IT WITH","يناسبها مع")}</div>${pr.map(x=>`<div class="stgi"><button class="stgb" data-a="open" data-v="${x.i}">${cut(x,200,"stgth")}<span class="stgn"><b>${esc(x.n)}</b><small>${t(CATS[x.c][1])} · ${fmt(x.p)}</small></span></button>${plusBtn(x)}</div>`).join("")}`:"")};
+const modelImg=p=>(p.im||[]).find(u=>/_M\d?\./.test(u));
+const altImg=p=>(p.im||[]).find((u,i)=>i>0&&!/_M\d?\./.test(u));
+const badge=(f,n)=>f==0?tt("✦ Best match","✦ الأنسب لك"):tt("Match "+(f+1)+" of "+n,"اختيار "+(f+1)+" من "+n);
+const stgPanel=p=>{const mo=modelImg(p),al=!mo&&altImg(p),src=mo||al;return`<div class="stgph ${mo?"mo":"al"}">${src?`<img src="${B+src}&width=900" alt="" draggable="false" onerror="this.parentNode.classList.add('none');this.remove()">`:""}${src?`<span class="stgchip">${mo?tt("On model","على الموديل"):tt("Another angle","زاوية أخرى")}</span>`:""}${plusBtn(p,1)}</div><div class="stgt">${tt("IN THIS MATCH","في هذا الاختيار")}</div><button class="stgnm" data-a="open" data-v="${p.i}">${esc(p.n)}</button><div class="stgpr">${fmt(p.p)}${p.z.length<2?"":` · <span class="mute">${tt("choose size","اختر المقاس")}</span>`}</div><p class="stgd">${DESC(p)}</p><button class="ul stgv" data-a="open" data-v="${p.i}">${tt("View details","عرض التفاصيل")}</button>`};
+const stgSug=p=>{const pr=pairs(p);return pr.length?`<div class="stgsh"><span class="stgt" style="margin:0">${tt("COMPLETE THE LOOK","أكمل الإطلالة")}</span><span class="mute">${tt("Hand-picked to wear with your match","مختارة لتناسب اختيارك")}</span></div><div class="stgsg">${pr.map(x=>`<div class="stgsc"><button class="stgsi" data-a="open" data-v="${x.i}">${cut(x,500,"stgsim")}</button><div class="stgsf"><div><b>${esc(x.n)}</b><small>${t(CATS[x.c][1])} · ${fmt(x.p)}</small></div>${plusBtn(x)}</div></div>`).join("")}</div>`:""};
 const stageBlock=L=>{const m=stgList(L);if(!m.length)return"";const f=S.fx=Math.max(0,Math.min(S.fx||0,m.length-1));
- return`<div class="stg"><div class="stgl"><div class="stgt">${tt("YOUR TOP MATCHES","أفضل اختياراتك")}</div><div class="stgr" id="stgr">${m.map((x,i)=>cut(x,700,"stc"+(i==f?" f":"")).replace(/^<(img|svg) /,`<$1 data-a="fx" data-v="${i}" style="--o:${i-f};--d:${Math.abs(i-f)}" `)).join("")}</div><div class="stgnav"><button class="stga" data-a="fxs" data-v="-1" aria-label="Previous">‹</button><span id="stgc">${f+1} / ${m.length}</span><button class="stga" data-a="fxs" data-v="1" aria-label="Next">›</button></div><div class="stgh">${tt("Swipe to see your other matches","اسحب لرؤية باقي اختياراتك")}</div></div><div class="stgp" id="stgp">${stgPanel(m[f])}</div></div>`};
-function setFx(i){const m=stgList(qState().L);if(!m.length)return;i=Math.max(0,Math.min(i,m.length-1));S.fx=i;document.querySelectorAll("#stgr .stc").forEach((el,j)=>{el.style.setProperty("--o",j-i);el.style.setProperty("--d",Math.abs(j-i));el.classList.toggle("f",j==i)});const c=$("stgc");if(c)c.textContent=(i+1)+" / "+m.length;const p=$("stgp");if(p){p.innerHTML=stgPanel(m[i]);p.classList.remove("sw");void p.offsetWidth;p.classList.add("sw")}}
+ setTimeout(()=>m.forEach(p=>{const u=modelImg(p)||altImg(p);if(u)(new Image).src=B+u+"&width=900"}),400);
+ return`<div class="stg"><div class="stgl"><div class="stgtop"><span class="stgt" style="margin:0">${tt("YOUR TOP MATCHES","أفضل اختياراتك")}</span><span class="stgbd" id="stgbd">${badge(f,m.length)}</span></div><div class="stgw"><div class="stgno" id="stgno">${String(f+1).padStart(2,"0")}</div><div class="stgr" id="stgr">${m.map((x,i)=>cut(x,900,"stc"+(i==f?" f":"")).replace(/^<(img|svg) /,`<$1 data-a="fx" data-v="${i}" style="--o:${i-f};--d:${Math.abs(i-f)}" `)).join("")}</div><button class="stga l" data-a="fxs" data-v="-1" aria-label="Previous">‹</button><button class="stga r" data-a="fxs" data-v="1" aria-label="Next">›</button></div><div class="stgdots" id="stgdots">${m.map((x,i)=>`<button class="${i==f?"on":""}" data-a="fxd" data-v="${i}" aria-label="${i+1}"></button>`).join("")}</div><div class="stgh">${tt("Swipe or tap the arrows · tap the piece to see it closer","اسحب أو استخدم الأسهم · اضغط على القطعة لرؤيتها عن قرب")}</div></div><div class="stgp" id="stgp">${stgPanel(m[f])}</div><div class="stgs" id="stgs">${stgSug(m[f])}</div></div>`};
+function setFx(i){const m=stgList(qState().L);if(!m.length)return;i=Math.max(0,Math.min(i,m.length-1));if(i===S.fx&&$("stgp"))return;S.fx=i;document.querySelectorAll("#stgr .stc").forEach((el,j)=>{el.style.setProperty("--o",j-i);el.style.setProperty("--d",Math.abs(j-i));el.classList.toggle("f",j==i)});document.querySelectorAll("#stgdots button").forEach((el,j)=>el.classList.toggle("on",j==i));const bd=$("stgbd");if(bd)bd.textContent=badge(i,m.length);const no=$("stgno");if(no){no.textContent=String(i+1).padStart(2,"0");no.classList.remove("sw");void no.offsetWidth;no.classList.add("sw")}for(const[id,h]of[["stgp",stgPanel(m[i])],["stgs",stgSug(m[i])]]){const p=$(id);if(p){p.innerHTML=h;p.classList.remove("sw");void p.offsetWidth;p.classList.add("sw")}}}
 let SWP=null;document.addEventListener("pointerdown",e=>{const r=e.target.closest("#stgr");if(!r)return;SWP={x:e.clientX,y:e.clientY,r,m:false}});
 document.addEventListener("pointermove",e=>{if(!SWP)return;const dx=e.clientX-SWP.x,dy=e.clientY-SWP.y;if(!SWP.m&&Math.abs(dx)>8&&Math.abs(dx)>Math.abs(dy)){SWP.m=true;SWP.r.classList.add("drag")}if(SWP.m)SWP.r.style.setProperty("--dx",dx+"px")});
 const swEnd=e=>{if(!SWP)return;const s=SWP;SWP=null;if(!s.m)return;const dx=e.clientX-s.x,w=s.r.clientWidth*.25;s.r.classList.remove("drag");s.r.style.removeProperty("--dx");S.swT=Date.now();const n=Math.abs(dx)<40?0:Math.abs(dx)>w*2.4?2:1;setFx((S.fx||0)+(dx<0?n:-n))};
@@ -448,6 +469,7 @@ $("app").addEventListener("click",e=>{const b=e.target.closest("[data-a]");if(!b
  else if(a=="more"){S.n+=8;R()}
  else if(a=="fx"){if(Date.now()-(S.swT||0)<400)return;const i=+v;if(S.fx==i){const m=stgList(qState().L);if(m[i]){S.pid=m[i].i;S.size=null;S.dback=null;go("detail")}}else setFx(i)}
  else if(a=="fxs")setFx((S.fx||0)+(+v));
+ else if(a=="fxd")setFx(+v);
  else if(a=="open"){S.pid=+v;S.size=null;S.dback=null;go("detail")}
  else if(a=="sugopen"){S.pid=+v;S.size=null;S.dback="list";go("detail")}
  else if(a=="sugadd"){const p=byId(+v);if(!p)return;const sz=(p.z.find(z=>z[1])||p.z[0])[0],k=p.i+"|"+sz;S.list[k]={id:p.i,s:sz,q:(S.list[k]?S.list[k].q:0)+1};S.sugSig=sugSig();save();R()}
