@@ -57,7 +57,7 @@ function cutout(img) {
   const R0 = med(br), G0 = med(bg), B0 = med(bb);
   const dist = new Uint8Array(N);
   for (let i = 0, o = 0; i < N; i++, o += 4) dist[i] = Math.max(Math.abs(d[o] - R0), Math.abs(d[o + 1] - G0), Math.abs(d[o + 2] - B0));
-  const TOL = 26, bgm = new Uint8Array(N), q = new Int32Array(N); let qh = 0, qt = 0;
+  const TOL = 14, bgm = new Uint8Array(N), q = new Int32Array(N); let qh = 0, qt = 0;
   const push = i => { if (!bgm[i] && dist[i] < TOL) { bgm[i] = 1; q[qt++] = i; } };
   for (let i = 0; i < W; i++) { push(i); push((H - 1) * W + i); }
   for (let j = 0; j < H; j++) { push(j * W); push(j * W + W - 1); }
@@ -65,9 +65,9 @@ function cutout(img) {
   // enclosed background (inside of rings / hoops): large, very flat background-coloured islands
   const seen = new Uint8Array(N);
   for (let s = 0; s < N; s++) {
-    if (bgm[s] || seen[s] || dist[s] >= 9) continue;
+    if (bgm[s] || seen[s] || dist[s] >= 6) continue;
     qh = qt = 0; q[qt++] = s; seen[s] = 1;
-    while (qh < qt) { const i = q[qh++], px = i % W, py = (i / W) | 0; for (const n of [px > 0 ? i - 1 : -1, px < W - 1 ? i + 1 : -1, py > 0 ? i - W : -1, py < H - 1 ? i + W : -1]) if (n >= 0 && !seen[n] && !bgm[n] && dist[n] < 9) { seen[n] = 1; q[qt++] = n; } }
+    while (qh < qt) { const i = q[qh++], px = i % W, py = (i / W) | 0; for (const n of [px > 0 ? i - 1 : -1, px < W - 1 ? i + 1 : -1, py > 0 ? i - W : -1, py < H - 1 ? i + W : -1]) if (n >= 0 && !seen[n] && !bgm[n] && dist[n] < 6) { seen[n] = 1; q[qt++] = n; } }
     if (qt > N * .006) for (let t = 0; t < qt; t++) bgm[q[t]] = 1;
   }
   // keep the main piece (and any big parts), drop specks
@@ -91,8 +91,9 @@ function cutout(img) {
   for (let i = 0; i < N; i++) {
     if (!alpha[i]) continue; const px = i % W, py = (i / W) | 0;
     const edge = (px > 0 && !alpha[i - 1]) || (px < W - 1 && !alpha[i + 1]) || (py > 0 && !alpha[i - W]) || (py < H - 1 && !alpha[i + W]);
-    if (edge) alpha[i] = clamp((dist[i] - 6) / 34, .3, 1);
+    if (edge) alpha[i] = clamp((dist[i] - 4) / 26, .35, 1);
   }
+  const touch = (x0 <= 1) + (y0 <= 1) + (x1 >= W - 2) + (y1 >= H - 2), fill = (x1 - x0) * (y1 - y0) / N;
   const pad = 3; x0 = Math.max(0, x0 - pad); y0 = Math.max(0, y0 - pad); x1 = Math.min(W - 1, x1 + pad); y1 = Math.min(H - 1, y1 + pad);
   const cw = x1 - x0 + 1, ch = y1 - y0 + 1;
   const tc = document.createElement('canvas'); tc.width = cw; tc.height = ch;
@@ -111,6 +112,7 @@ function cutout(img) {
     }
   }
   for (let i = 3; i < od.length; i += 4) if (!od[i]) { od[i - 3] = R0 * .8; od[i - 2] = G0 * .8; od[i - 1] = B0 * .8; od[i] = 255; }
+  for (let i = 0; i < cw * ch; i++) od[i * 4 + 3] = Math.round(A[i] * 255);
   tx.putImageData(out, 0, 0);
   // sparkle points: bright, high-contrast specks (stones)
   const L = new Float32Array(cw * ch); for (let i = 0; i < cw * ch; i++) L[i] = (od[i * 4] + od[i * 4 + 1] + od[i * 4 + 2]) / 3;
@@ -122,7 +124,7 @@ function cutout(img) {
   }
   sp.sort((a, b) => b[2] - a[2]);
   const spk = []; for (const p of sp) { if (spk.every(s => Math.hypot(s[0] - p[0], s[1] - p[1]) > Math.max(cw, ch) * .1)) spk.push(p); if (spk.length >= 7) break; }
-  return { canvas: tc, A, cw, ch, spk };
+  return { canvas: tc, A, cw, ch, spk, touch, fill };
 }
 
 /* Cut-out → a real 3D solid: a grid over the silhouette, lifted into a rounded "pillow" (dome for beads,
@@ -288,27 +290,29 @@ export function open(cfg) {
   const photoMat = tex => { const m = new MeshPhysicalMaterial({ map: tex, roughness: .34, metalness: 0, clearcoat: .55, clearcoatRoughness: .18, emissive: new Color('#ffffff'), emissiveMap: tex, emissiveIntensity: .2, envMapIntensity: .75 }); disposables.push(m, tex); return m; };
 
   /* ----- build a piece from its photo ----- */
+  /* every angle photo of the piece, exactly as photographed (on-model shots skipped) */
+  const angleImgs = im => { const L = (im || []).filter(u => !/m\d?\.(jpe?g|png|webp)$/i.test(u.replace(/\?.*/, ''))), n = u => { const m = u.replace(/\?.*/, '').match(/_(\d)\.(jpe?g|png|webp)$/i); return m ? +m[1] : 9; }; return L.sort((x, y) => n(x) - n(y)).slice(0, 4); };
+  const viewMat = tex => { const m = new MeshBasicMaterial({ map: tex, transparent: true, alphaTest: .06, depthWrite: true, toneMapped: false, side: DoubleSide }); disposables.push(m, tex); return m; };
   async function pieceFromPhoto(it, kind, target) {
-    const u = frontImg(it.im); if (!u) return null;
-    const img = await getImg(cfg, u, 640); if (closed) return null;
-    const cut = cutout(img); if (!cut) return null;
-    const wp = wirePoint(cut, kind);
-    const mm = target.mmFrom == 'w' ? target.mm / Math.max(1, wp.wmax) : target.mm / Math.max(1, wp.hgt);
-    const wmm = wp.wmax * mm, hmm = wp.hgt * mm;
-    const half = target.half(wmm, hmm), capF = target.capF;
-    const g = solid(cut, { mm, wx: target.center ? cut.cw / 2 : wp.x, wy: target.center ? (wp.top + wp.bot) / 2 : wp.y, half, capF });
-    if (!g) return null;
-    const tex = new CanvasTexture(cut.canvas); tex.colorSpace = SRGBColorSpace; tex.anisotropy = 4;
-    const mesh = new Mesh(g, photoMat(tex)); mesh.userData.item = it; disposables.push(g);
-    // sparkles where the photo has stones catching light
-    const stones = /zirconia|crystal|diamond|sparkl|pav/i.test(it.n + ' ' + (it.x || []).join(' '));
-    if (stones) for (const [px, py] of cut.spk) {
-      const s = new Sprite(new SpriteMaterial({ map: glow, blending: AdditiveBlending, depthWrite: false, transparent: true, opacity: 0 }));
+    const urls = angleImgs(it.im); if (!urls.length) return null;
+    const cuts = await Promise.all(urls.map(async (u, i) => { try { const c = cutout(await getImg(cfg, u, 720)); return c && (i == 0 || (c.touch < 2 && c.fill < .9)) ? c : null; } catch (e) { return null; } }));
+    if (closed || !cuts[0]) return null;
+    const bb = new Object3D(), views = [];
+    let wmm = 0, hmm = 0;
+    cuts.forEach((cut, i) => {
+      if (!cut) return;
+      const wp = wirePoint(cut, kind);
+      const mm = i == 0 ? (target.mmFrom == 'w' ? target.mm / Math.max(1, wp.wmax) : target.mm / Math.max(1, wp.hgt)) : hmm / Math.max(1, wp.hgt);
+      if (i == 0) { wmm = wp.wmax * mm; hmm = wp.hgt * mm; }
       const ox = target.center ? cut.cw / 2 : wp.x, oy = target.center ? (wp.top + wp.bot) / 2 : wp.y;
-      s.position.set((px - ox) * mm, -(py - oy) * mm, g.userData.hAt(px, py) + .25); s.scale.setScalar(2.6 + Math.random() * 1.4);
-      s.userData = { ph: Math.random() * TAU, sp: 1.3 + Math.random() * 1.6 }; mesh.add(s); sparkles.push(s); disposables.push(s.material);
-    }
-    return { mesh, wmm, hmm, kind, it };
+      const g = new PlaneGeometry(cut.cw * mm, cut.ch * mm).translate((cut.cw / 2 - ox) * mm, -(cut.ch / 2 - oy) * mm, 0); disposables.push(g);
+      const tex = new CanvasTexture(cut.canvas); tex.colorSpace = SRGBColorSpace; tex.anisotropy = 8;
+      const m = new Mesh(g, viewMat(tex)); m.userData.item = it; m.visible = !views.length; bb.add(m); views.push(m);
+    });
+    // spread the photos around the piece: 1 = front, the others in their numbered order
+    views.forEach((m, i) => m.userData.ang = i * TAU / views.length);
+    bb.userData = { views, cur: 0, off: target.off || 0 };
+    return { mesh: bb, views, wmm, hmm, kind, it };
   }
 
   /* ----- bracelet scene ----- */
@@ -320,8 +324,7 @@ export function open(cfg) {
       const kind = charmKind(it), h = charmSize(it, kind);
       try {
         return await pieceFromPhoto(it, kind, {
-          mm: h, mmFrom: 'h', capF: kind == 'dangle' ? .14 : kind == 'link' ? .25 : .9,
-          half: (w, hh) => kind == 'dangle' ? Math.max(.9, Math.min(w, hh) * .1) : kind == 'link' ? Math.min(w, hh) * .3 : Math.min(w, hh) * .44
+          mm: h, mmFrom: 'h', off: kind == 'dangle' ? 1.6 : kind == 'link' ? 2.2 : kind == 'spacer' ? 3 : 4.2
         });
       } catch (e) { return null; }
     }));
@@ -402,9 +405,9 @@ export function open(cfg) {
     if (sp.kind == 'stud') for (let s = .06; s < .95; s += toS(7.5)) { if (pcs.some(p => Math.abs(p.s - s) < toS(p.wmm / 2 + 2)) || threads.some(t => Math.abs(t - s) < toS(3))) continue; const m = new Mesh(new SphereGeometry(sp.rw * 1.35, 16, 12), claspM); frame(s, m); spin.add(m); }
     // charms into holders (holder = sits on the wire; swing = pendulum for dangles)
     for (const p of pcs) {
-      const holder = new Object3D(), swing = new Object3D(); holder.add(swing); swing.add(p.mesh); spin.add(holder);
-      p.holder = holder; p.swing = swing; p.phx = 0; p.vx = 0; p.phz = 0; p.vz = 0; p.prev = null; p.pv = new Vector3(); p.acc = new Vector3();
-      meshes.push(p.mesh);
+      const holder = new Object3D(); holder.add(p.mesh); spin.add(holder);
+      p.holder = holder; p.phx = 0; p.vx = 0; p.phz = 0; p.vz = 0; p.prev = null; p.pv = new Vector3(); p.acc = new Vector3();
+      meshes.push(...p.views);
     }
     B = { sp, st, pcs, frame, pt, rebuildWire, endB, lid, ballB, clasp, t0: performance.now() / 1000, open: 0, playing: true, lastOpen: -1, Rr };
     shadow.material.map.dispose(); shadow.material.map = shadowTex(true); shadow.scale.setScalar(Rr * 2.75); shadow.position.y = -26; disposables.push(shadow.material.map);
@@ -451,17 +454,18 @@ export function open(cfg) {
   /* ----- single piece scene ----- */
   async function buildPiece(it) {
     const c = it.c, kind = c == 3 ? 'ring' : c == 2 ? 'ear' : c == 1 ? 'neck' : 'other';
-    const p = await pieceFromPhoto(it, 'piece', { mm: 46, mmFrom: 'w', center: true, capF: kind == 'ring' ? .2 : .12, half: (w, h) => Math.max(1, Math.min(w, h) * (kind == 'ring' ? .16 : .08)) });
+    const p = await pieceFromPhoto(it, 'piece', { mm: 46, mmFrom: 'w', center: true });
     if (closed || !p) return false;
-    const holder = new Object3D(); holder.add(p.mesh); spin.add(holder); meshes.push(p.mesh);
-    const bb = p.mesh.geometry.boundingBox; holder.position.y = -(bb.min.y + bb.max.y) / 2;
+    const holder = new Object3D(); holder.add(p.mesh); spin.add(holder); meshes.push(...p.views); PIECE = holder;
+    const bb = { min: { y: -p.hmm / 2 }, max: { y: p.hmm / 2 } };
     shadow.material.map.dispose(); shadow.material.map = shadowTex(false); disposables.push(shadow.material.map); shadow.scale.set(Math.max(30, p.wmm * 1.2), 1, 1); shadow.scale.setScalar(Math.max(34, p.wmm * 1.25)); shadow.position.y = -(bb.max.y - bb.min.y) / 2 - 8;
-    V.cy = 0; V.yaw = -.5; V.el = .18; V.tgtDist = V.dist = Math.max(p.wmm, p.hmm) * 3.6 * (V.fit || 1);
+    V.cy = 0; V.yaw = 0; V.el = .12; V.tgtDist = V.dist = Math.max(p.wmm, p.hmm) * 3.6 * (V.fit || 1);
     return true;
   }
 
+  let PIECE = null;
   function clearScene() {
-    B = null; meshes.length = 0; sparkles.length = 0;
+    B = null; PIECE = null; meshes.length = 0; sparkles.length = 0;
     for (const ch of [...spin.children]) { spin.remove(ch); ch.traverse(o => { if (o.geometry) o.geometry.dispose(); }); }
   }
 
@@ -484,7 +488,7 @@ export function open(cfg) {
   }
   function renderActs() {
     const el = $('.b3-act'), isB = scenes[cur] && scenes[cur].k == 'b';
-    el.innerHTML = (isB ? `<button data-a="replay">↻ ${T('replay')}</button><button data-a="clasp" class="b3-cl">${T('open')}</button>` : '') + `<button data-a="save">⤓ ${T('save')}</button>`;
+    el.innerHTML = (isB ? `<button data-a="replay">↻ ${T('replay')}</button>` : '') + `<button data-a="save">⤓ ${T('save')}</button>`;
     setOpenBtn();
   }
   function setOpenBtn() { const b = ov.querySelector('.b3-cl'); if (b && B) b.textContent = B.open > .5 && !B.playing ? T('close') : T('open'); }
@@ -538,10 +542,10 @@ export function open(cfg) {
     const now = performance.now(); if (now - lastTap < 300) { V.tgtDist = B ? B.Rr * 7.1 * (V.fit || 1) : V.tgtDist; V.el = B ? .5 : .18; }
     lastTap = now;
     const r = cv.getBoundingClientRect(); rc.setFromCamera(new Vector2((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1), cam);
-    const h = rc.intersectObjects(meshes, false)[0], lb = $('.b3-lb');
+    const h = rc.intersectObjects(meshes.filter(m => m.visible), false)[0], lb = $('.b3-lb');
     if (h) {
       const it = h.object.userData.item; lb.innerHTML = `<b>${esc(it.n)}</b><span>${cfg.fmt(it.p)}</span>`; lb.hidden = false; clearTimeout(lb._t); lb._t = setTimeout(() => lb.hidden = true, 4000);
-      const p = B && B.pcs.find(p => p.mesh == h.object); if (p) { p.vx += 6; p.vz += 4; }
+      const p = B && B.pcs.find(p => p.views.includes(h.object)); if (p) p.vz += 5;
       h.object.userData.pop = 1;
     } else lb.hidden = true;
   }
@@ -574,18 +578,31 @@ export function open(cfg) {
     world.position.y = V.cy + Math.sin(ts * 1.1) * .9;
     let sx = 0, sy = 0; if (V.shake) { V.shake = Math.max(0, V.shake - dt * 3); sx = (Math.random() - .5) * V.shake * .8; sy = (Math.random() - .5) * V.shake * .8; }
     cam.position.set(sx, Math.sin(V.el) * V.dist + sy, Math.cos(V.el) * V.dist); cam.lookAt(0, V.cy * .4, 0);
-    // dangles: two-axis pendulums driven by gravity + the motion of the bracelet (slightly exaggerated)
+    // dangles: sway driven by gravity + the motion of the bracelet
     if (B) for (const p of B.pcs) {
       if (p.kind != 'dangle' || !p.holder.visible) continue;
       p.holder.getWorldPosition(wp);
       if (p.prev) { const v = wp.clone().sub(p.prev).divideScalar(Math.max(dt, 1e-3)); const a = v.clone().sub(p.pv).divideScalar(Math.max(dt, 1e-3)); p.acc.lerp(a, .35); p.pv.copy(v); }
       p.prev = wp.clone();
-      gW.set(0, -9800, 0).addScaledVector(p.acc, -9);
-      p.holder.getWorldQuaternion(tmpQ); gW.applyQuaternion(tmpQ.invert());
-      const L = 70, ax = Math.atan2(-gW.z, -gW.y), az = Math.atan2(gW.x, -gW.y), gm = Math.hypot(gW.y, gW.z) / L, gz = Math.hypot(gW.x, gW.y) / L;
-      p.vx += (gm * Math.sin(ax - p.phx) - 2.4 * p.vx) * dt; p.phx = clamp(p.phx + p.vx * dt, -1.6, 1.6);
-      p.vz += (gz * Math.sin(az - p.phz) - 2.4 * p.vz) * dt; p.phz = clamp(p.phz + p.vz * dt, -.7, .7);
-      p.swing.rotation.set(p.phx, 0, p.phz);
+      gW.set(0, -9800, 0).addScaledVector(p.acc, -9).applyQuaternion(cam.quaternion.clone().invert());
+      const az = Math.atan2(gW.x, -gW.y), gz = Math.hypot(gW.x, gW.y) / 70;
+      p.vz += (gz * Math.sin(az - p.phz) - 2.4 * p.vz) * dt; p.phz = clamp(p.phz + p.vz * dt, -.6, .6);
+    }
+    // every piece faces the viewer as its real photo; the photo shown follows the angle it is seen from
+    for (const holder of (B ? B.pcs.map(p => p.holder) : PIECE ? [PIECE] : [])) {
+      const bb = holder.children[0]; if (!bb || !holder.visible || !bb.userData.views) continue;
+      holder.getWorldPosition(wp); holder.getWorldQuaternion(tmpQ);
+      const toCam = cam.position.clone().sub(wp).normalize(), rW = new Vector3(0, 0, 1).applyQuaternion(tmpQ);
+      const ang = Math.atan2(rW.z * toCam.x - rW.x * toCam.z, rW.x * toCam.x + rW.z * toCam.z), u = bb.userData, n = u.views.length;
+      if (n > 1) {
+        const dA = i => { let d = Math.abs(((ang - u.views[i].userData.ang) % TAU + TAU) % TAU); return Math.min(d, TAU - d); };
+        let best = u.cur; for (let i = 0; i < n; i++) if (dA(i) < dA(best) - .2) best = i;
+        if (best != u.cur) { u.views[u.cur].visible = false; u.views[best].visible = true; u.cur = best; }
+      }
+      const inv = tmpQ.clone().invert();
+      bb.quaternion.copy(inv).multiply(cam.quaternion);
+      const p = B && B.pcs.find(q => q.holder == holder); if (p && p.kind == 'dangle') bb.rotateZ(p.phz);
+      bb.position.copy(toCam.multiplyScalar(u.off)).applyQuaternion(inv);
     }
     // sparkles twinkle with time and as the piece turns
     for (const s of sparkles) {
