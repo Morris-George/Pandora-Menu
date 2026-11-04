@@ -5,6 +5,7 @@
 const PI = Math.PI, TAU = PI * 2;
 const clamp = (x, a, b) => x < a ? a : x > b ? b : x;
 const TXT = {
+  hint: ['Drag to move it', 'اسحب لتحريكها'],
   title: ['Your bracelet', 'سوارك'], titleP: ['Your pieces', 'قطعك'],
   load: ['Putting your charms on the bracelet…', 'جارٍ تركيب التشارمز على السوار…'],
   save: ['Save picture', 'حفظ صورة'], bracelet: ['Bracelet', 'السوار'],
@@ -38,10 +39,19 @@ function cutout(img, S = 512) {
   const dist = new Uint8Array(N);
   for (let i = 0, o = 0; i < N; i++, o += 4) dist[i] = Math.max(Math.abs(d[o] - R0), Math.abs(d[o + 1] - G0), Math.abs(d[o + 2] - B0));
   const TOL = 14, bgm = new Uint8Array(N), q = new Int32Array(N); let qh = 0, qt = 0;
-  const push = i => { if (!bgm[i] && dist[i] < TOL) { bgm[i] = 1; q[qt++] = i; } };
-  for (let i = 0; i < W; i++) { push(i); push((H - 1) * W + i); }
-  for (let j = 0; j < H; j++) { push(j * W); push(j * W + W - 1); }
-  while (qh < qt) { const i = q[qh++], px = i % W, py = (i / W) | 0; if (px > 0) push(i - 1); if (px < W - 1) push(i + 1); if (py > 0) push(i - W); if (py < H - 1) push(i + W); }
+  // background = near the studio colour, or a soft grey shadow that fades smoothly out of it
+  const sat = new Uint8Array(N); for (let i = 0, o = 0; i < N; i++, o += 4) sat[i] = Math.max(d[o], d[o + 1], d[o + 2]) - Math.min(d[o], d[o + 1], d[o + 2]);
+  const lum = new Uint8Array(N); for (let i = 0, o = 0; i < N; i++, o += 4) lum[i] = (d[o] + d[o + 1] + d[o + 2]) / 3;
+  // "soft" = a blurry, slowly fading area (studio shadow), unlike metal whose shading changes quickly
+  const bl = new Float32Array(N), tmp = new Float32Array(N), soft = new Uint8Array(N);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { let a = 0, n = 0; for (let k = -2; k <= 2; k++) { const xx = x + k; if (xx >= 0 && xx < W) { a += lum[y * W + xx]; n++; } } tmp[y * W + x] = a / n; }
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { let a = 0, n = 0; for (let k = -2; k <= 2; k++) { const yy = y + k; if (yy >= 0 && yy < H) { a += tmp[yy * W + x]; n++; } } bl[y * W + x] = a / n; }
+  for (let y = 3; y < H - 3; y++) for (let x = 3; x < W - 3; x++) { const i = y * W + x; const g = Math.max(Math.abs(bl[i + 3] - bl[i - 3]), Math.abs(bl[i + 3 * W] - bl[i - 3 * W])) / 6; soft[i] = g <= 1.1 * 1100 / Math.max(W, H) * (Math.max(W, H) / 1100) ? 1 : 0; }
+  const step = (a, b) => Math.max(Math.abs(d[a * 4] - d[b * 4]), Math.abs(d[a * 4 + 1] - d[b * 4 + 1]), Math.abs(d[a * 4 + 2] - d[b * 4 + 2]));
+  const push = (i, f) => { if (bgm[i]) return; if (dist[i] < TOL || (f >= 0 && lum[i] >= 200 && sat[i] < 10 && soft[i])) { bgm[i] = 1; q[qt++] = i; } };
+  for (let i = 0; i < W; i++) { push(i, -1); push((H - 1) * W + i, -1); }
+  for (let j = 0; j < H; j++) { push(j * W, -1); push(j * W + W - 1, -1); }
+  while (qh < qt) { const i = q[qh++], px = i % W, py = (i / W) | 0; if (px > 0) push(i - 1, i); if (px < W - 1) push(i + 1, i); if (py > 0) push(i - W, i); if (py < H - 1) push(i + W, i); }
   // enclosed background (inside of rings / hoops): large, very flat background-coloured islands
   const seen = new Uint8Array(N);
   for (let s = 0; s < N; s++) {
@@ -68,10 +78,13 @@ function cutout(img, S = 512) {
   }
   if (x1 - x0 < 6 || y1 - y0 < 6) return null;
   // soft edge on the band next to the background
+  // a 2px band: alpha from how far the pixel is from the studio colour, and the white mixed into it taken out
+  const band = new Uint8Array(N);
+  for (let r = 0; r < 2; r++) { const prev = band.slice(); for (let i = 0; i < N; i++) { if (!alpha[i] || band[i]) continue; const px = i % W, py = (i / W) | 0; const nb = [px > 0 ? i - 1 : -1, px < W - 1 ? i + 1 : -1, py > 0 ? i - W : -1, py < H - 1 ? i + W : -1]; if (nb.some(n => n >= 0 && (!alpha[n] || prev[n]))) band[i] = 1; } }
   for (let i = 0; i < N; i++) {
-    if (!alpha[i]) continue; const px = i % W, py = (i / W) | 0;
-    const edge = (px > 0 && !alpha[i - 1]) || (px < W - 1 && !alpha[i + 1]) || (py > 0 && !alpha[i - W]) || (py < H - 1 && !alpha[i + W]);
-    if (edge) alpha[i] = clamp((dist[i] - 4) / 26, .35, 1);
+    if (!band[i]) continue; const a = clamp((dist[i] - 5) / 55, 0, 1);
+    if (a < .06) { alpha[i] = 0; continue; } alpha[i] = a;
+    const o = i * 4; d[o] = clamp((d[o] - (1 - a) * R0) / a, 0, 255); d[o + 1] = clamp((d[o + 1] - (1 - a) * G0) / a, 0, 255); d[o + 2] = clamp((d[o + 2] - (1 - a) * B0) / a, 0, 255);
   }
   const touch = (x0 <= 1) + (y0 <= 1) + (x1 >= W - 2) + (y1 >= H - 2), fill = (x1 - x0) * (y1 - y0) / N;
   const pad = 3; x0 = Math.max(0, x0 - pad); y0 = Math.max(0, y0 - pad); x1 = Math.min(W - 1, x1 + pad); y1 = Math.min(H - 1, y1 + pad);
@@ -174,15 +187,20 @@ function compose(bc, ring, charms, sizeCm) {
   const x = out.getContext('2d'); x.imageSmoothingQuality = 'high';
   x.drawImage(bc, pad, pad);
   const items = placed.map(({ c, s }) => ({ c, p: at(s) })).sort((u, v) => u.p.y - v.p.y);
+  const base = document.createElement('canvas'); base.width = out.width; base.height = out.height; base.getContext('2d').drawImage(bc, pad, pad);
+  const layers = [];
   for (const { c, p } of items) {
-    const hpx = c.hmm * k, sc = hpx / Math.max(1, c.wp.hgt);
-    x.save(); x.translate(pad + p.x, pad + p.y);
-    if (c.kind != 'dangle') x.rotate(p.ang > PI / 2 || p.ang < -PI / 2 ? p.ang + PI : p.ang);
+    const hpx = c.hmm * k, sc = hpx / Math.max(1, c.wp.hgt), rot = c.kind == 'dangle' ? 0 : (p.ang > PI / 2 || p.ang < -PI / 2 ? p.ang + PI : p.ang);
+    x.save(); x.translate(pad + p.x, pad + p.y); x.rotate(rot);
     x.shadowColor = 'rgba(60,38,44,.28)'; x.shadowBlur = 6 * k / 4; x.shadowOffsetY = 1.2 * k / 4;
     x.drawImage(c.cut.canvas, -c.wp.x * sc, -c.wp.y * sc, c.cut.cw * sc, c.cut.ch * sc);
     x.restore();
+    layers.push({ cv: c.cut.canvas, px: pad + p.x, py: pad + p.y, ox: c.wp.x * sc, oy: c.wp.y * sc, w: c.cut.cw * sc, h: c.cut.ch * sc, rot, dangle: c.kind == 'dangle' });
   }
-  return trim(out);
+  return withLayers(out, base, layers);
+}
+function withLayers(full, base, layers) {
+  const t = trim(full); t.base = base; t.layers = layers; return t;
 }
 function row(charms) { // no bracelet photo: the charms side by side
   const k = 14, W = charms.reduce((s, c) => s + c.wmm * k + 12, 40), H = 22 * k, out = document.createElement('canvas'); out.width = W; out.height = H; const x = out.getContext('2d');
@@ -192,7 +210,7 @@ function row(charms) { // no bracelet photo: the charms side by side
 function trim(c) {
   const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let x0 = c.width, y0 = c.height, x1 = 0, y1 = 0;
   for (let y = 0; y < c.height; y++) for (let x = 0; x < c.width; x++) if (d[(y * c.width + x) * 4 + 3] > 8) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
-  if (x1 <= x0) return c; const m = 12, o = document.createElement('canvas'); o.width = x1 - x0 + 1 + m * 2; o.height = y1 - y0 + 1 + m * 2; o.getContext("2d").drawImage(c, m - x0, m - y0); return o;
+  if (x1 <= x0) { c.dx = 0; c.dy = 0; return c; } const m = 12, o = document.createElement('canvas'); o.width = x1 - x0 + 1 + m * 2; o.height = y1 - y0 + 1 + m * 2; o.getContext("2d").drawImage(c, m - x0, m - y0); o.dx = m - x0; o.dy = m - y0; return o;
 }
 
 async function prepCharm(cfg, it) {
@@ -207,10 +225,10 @@ export function open(cfg) {
   injectCSS();
   const ov = document.createElement('div'); ov.className = 'b3'; ov.dir = ar ? 'rtl' : 'ltr';
   ov.innerHTML = `<div class="b3-top"><div class="b3-tt"><span class="b3-k">PANDORA</span><b></b></div><button class="b3-x" aria-label="${T('x')}">×</button></div>
-  <div class="b3-st"><img alt=""></div><div class="b3-ld"><i></i><span>${T('load')}</span></div>
-  <div class="b3-bot"><div class="b3-dots"></div><div class="b3-tabs"></div><div class="b3-act"><button data-a="save">⤓ ${T('save')}</button></div><div class="b3-card" hidden></div><div class="b3-note">${T('note')}</div></div>`;
+  <div class="b3-st"><div class="b3-sc"><div class="b3-3d"></div></div></div><div class="b3-ld"><i></i><span>${T('load')}</span></div>
+  <div class="b3-bot"><div class="b3-hint">${T('hint')}</div><div class="b3-dots"></div><div class="b3-tabs"></div><div class="b3-act"><button data-a="save">⤓ ${T('save')}</button></div><div class="b3-card" hidden></div><div class="b3-note">${T('note')}</div></div>`;
   document.body.appendChild(ov); document.documentElement.classList.add('b3-on'); requestAnimationFrame(() => ov.classList.add('in'));
-  const $ = s => ov.querySelector(s), img = $('.b3-st img');
+  const $ = s => ov.querySelector(s), st = $('.b3-st'), sc3 = $('.b3-sc'), l3 = $('.b3-3d');
   let closed = false, cur = -1, canvas = null;
   const onPop = () => close(true); try { history.pushState({ b3: 1 }, ''); addEventListener('popstate', onPop); } catch (e) { }
   const onKey = e => { if (e.key == 'Escape') close(); }; addEventListener('keydown', onKey);
@@ -218,7 +236,41 @@ export function open(cfg) {
   if (cfg.charms.length || cfg.carrier) scenes.push({ k: 'b', label: T('bracelet') });
   for (const it of cfg.pieces) scenes.push({ k: 'p', it, label: it.n });
   const cache = {};
-  function setPic(c) { canvas = c; img.classList.remove('on'); if (!c) return; img.src = c.toDataURL('image/png'); requestAnimationFrame(() => requestAnimationFrame(() => img.classList.add('on'))); }
+  let dangles = [];
+  function setPic(c) {
+    canvas = c; l3.innerHTML = ''; dangles = []; sc3.classList.remove('on'); if (!c) return;
+    const W = c.width, H = c.height; l3.style.width = W + 'px'; l3.style.height = H + 'px';
+    const put = (cv, x, y, w, h, z, cls) => { const e = document.createElement('canvas'); e.width = cv.width; e.height = cv.height; e.getContext('2d').drawImage(cv, 0, 0); e.className = cls || ''; Object.assign(e.style, { left: x + 'px', top: y + 'px', width: w + 'px', height: h + 'px' }); e.style.setProperty('--z', z + 'px'); l3.appendChild(e); return e; };
+    if (c.base) {
+      put(c.base, c.dx, c.dy, c.base.width, c.base.height, 0);
+      c.layers.forEach((L, i) => {
+        const e = put(L.cv, c.dx + L.px - L.ox, c.dy + L.py - L.oy, L.w, L.h, 26 + i * 1.5, 'b3-ch');
+        e.style.transformOrigin = L.ox + 'px ' + L.oy + 'px'; e.dataset.rot = L.rot; if (L.dangle) dangles.push({ e, a: 0, v: 0 }); else e.style.setProperty('--r', L.rot + 'rad');
+      });
+    } else put(c, 0, 0, W, H, 0);
+    fit(); requestAnimationFrame(() => requestAnimationFrame(() => sc3.classList.add('on')));
+  }
+  function fit() { if (!canvas) return; const r = st.getBoundingClientRect(), k = Math.min((r.width - 24) / canvas.width, (r.height - 16) / canvas.height, 1.6); l3.style.setProperty('--k', k); sc3.style.width = canvas.width * k + 'px'; sc3.style.height = canvas.height * k + 'px'; }
+  const onRs = () => fit(); addEventListener('resize', onRs);
+  // gentle movement: drag (or tilt the phone) to turn the picture a little; charms float just above the chain and dangles swing
+  const M = { rx: 0, ry: 0, tx: 0, ty: 0, drag: null, t0: performance.now(), user: 0, tilt: null };
+  st.addEventListener('pointerdown', e => { M.drag = { x: e.clientX, y: e.clientY, rx: M.tx, ry: M.ty }; M.user = performance.now(); try { st.setPointerCapture(e.pointerId); } catch (_) { } });
+  st.addEventListener('pointermove', e => { if (!M.drag) return; M.ty = clamp(M.drag.ry + (e.clientX - M.drag.x) * .12, -24, 24); M.tx = clamp(M.drag.rx - (e.clientY - M.drag.y) * .1, -16, 16); M.user = performance.now(); });
+  const end = e => { if (!M.drag) return; const s = scenes[cur], d = e.clientX - M.drag.x; M.drag = null; M.user = performance.now(); if (s && s.k == 'p' && s.urls && s.urls.length > 1 && Math.abs(d) > 60) show(cur, ((s.view || 0) + (d < 0 ? 1 : -1) + s.urls.length) % s.urls.length); };
+  st.addEventListener('pointerup', end); st.addEventListener('pointercancel', end);
+  const onTilt = e => { if (e.gamma == null) return; if (!M.tilt) M.tilt = { g: e.gamma, b: e.beta }; if (M.drag || performance.now() - M.user < 1500) return; M.ty = clamp((e.gamma - M.tilt.g) * .6, -20, 20); M.tx = clamp(-(e.beta - M.tilt.b) * .4, -14, 14); M.tiltAt = performance.now(); };
+  addEventListener('deviceorientation', onTilt);
+  let raf = 0, last = performance.now();
+  const loop = now => {
+    raf = requestAnimationFrame(loop); const dt = Math.min(.05, (now - last) / 1000); last = now;
+    const idle = !M.drag && now - M.user > 2500 && !(M.tiltAt && now - M.tiltAt < 800);
+    if (idle) { const t = (now - M.t0) / 1000; M.ty += (Math.sin(t * .55) * 9 - M.ty) * Math.min(1, dt * 1.5); M.tx += (Math.sin(t * .37) * 3 - M.tx) * Math.min(1, dt * 1.5); }
+    const pry = M.ry; M.rx += (M.tx - M.rx) * Math.min(1, dt * 9); M.ry += (M.ty - M.ry) * Math.min(1, dt * 9);
+    l3.style.transform = `scale(var(--k)) rotateX(${M.rx.toFixed(2)}deg) rotateY(${M.ry.toFixed(2)}deg)`;
+    const w = (M.ry - pry) / Math.max(dt, 1e-3);
+    for (const D of dangles) { D.v += (-D.a * 38 - D.v * 3.2 - w * .9 - M.ry * .25) * dt; D.a = clamp(D.a + D.v * dt, -28, 28); D.e.style.setProperty('--r', D.a.toFixed(2) + 'deg'); }
+  };
+  raf = requestAnimationFrame(loop);
   async function build(s) {
     if (s.k == 'b') {
       const list = []; for (const it of cfg.charms) for (let i = 0; i < (it.q || 1); i++) list.push(it);
@@ -260,9 +312,6 @@ export function open(cfg) {
     if (b.dataset.a == 'save') savePic();
     if (b.dataset.a == 'addc' && cfg.fallback) { cfg.onAdd(cfg.fallback.id); renderCard(); }
   });
-  // swipe between photos of a single piece
-  let sx = null; img.addEventListener('pointerdown', e => sx = e.clientX);
-  img.addEventListener('pointerup', e => { const s = scenes[cur]; if (sx == null || !s || s.k != 'p' || !s.urls || s.urls.length < 2) return; const d = e.clientX - sx; sx = null; if (Math.abs(d) < 30) return; show(cur, ((s.view || 0) + (d < 0 ? 1 : -1) + s.urls.length) % s.urls.length); });
   async function savePic() {
     if (!canvas) return; const blob = await new Promise(r => canvas.toBlob(r, 'image/png')); if (!blob) return;
     const f = new File([blob], 'pandora-bracelet.png', { type: 'image/png' });
@@ -271,7 +320,7 @@ export function open(cfg) {
   }
   $('.b3-x').onclick = () => close();
   function close(fromPop) {
-    if (closed) return; closed = true; removeEventListener('keydown', onKey); removeEventListener('popstate', onPop);
+    if (closed) return; closed = true; cancelAnimationFrame(raf); removeEventListener('resize', onRs); removeEventListener('deviceorientation', onTilt); removeEventListener('keydown', onKey); removeEventListener('popstate', onPop);
     if (!fromPop) { try { if (history.state && history.state.b3) history.back(); } catch (e) { } }
     ov.classList.remove('in'); document.documentElement.classList.remove('b3-on'); setTimeout(() => { ov.remove(); cfg.onClose && cfg.onClose(); }, 260);
   }
@@ -292,8 +341,11 @@ html.b3-on,html.b3-on body{overflow:hidden}
 html[dir=rtl] .b3-tt b{font-family:Cairo,system-ui,sans-serif;font-weight:500}
 .b3-x{width:44px;height:44px;border-radius:50%;background:#fff;border:1px solid #f5dcdf;font-size:26px;line-height:1;color:#4a2f35}
 .b3-st{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:10px 16px}
-.b3-st img{max-width:100%;max-height:100%;object-fit:contain;opacity:0;transform:scale(.97);transition:opacity .5s,transform .6s cubic-bezier(.2,.8,.2,1);filter:drop-shadow(0 18px 26px rgba(74,47,53,.14));touch-action:pan-y;-webkit-user-drag:none}
-.b3-st img.on{opacity:1;transform:none}
+.b3-st{touch-action:none;cursor:grab;perspective:1400px;position:relative}.b3-st:active{cursor:grabbing}
+.b3-sc{position:relative;opacity:0;transform:translateY(10px);transition:opacity .5s,transform .6s cubic-bezier(.2,.8,.2,1)}.b3-sc.on{opacity:1;transform:none}
+.b3-3d{position:absolute;left:0;top:0;transform-origin:0 0;transform-style:preserve-3d;will-change:transform}
+.b3-3d canvas{position:absolute;display:block;transform:translateZ(var(--z,0px)) rotate(var(--r,0rad));filter:drop-shadow(0 16px 22px rgba(74,47,53,.13))}
+.b3-3d canvas.b3-ch{filter:drop-shadow(0 6px 8px rgba(74,47,53,.22))}
 .b3-ld{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;font-size:13px;color:#a58f94;pointer-events:none;text-align:center;padding:0 30px}
 .b3-ld[hidden]{display:none}.b3-ld i{width:52px;height:52px;border-radius:50%;border:2px solid #f5dcdf;border-top-color:#ff9aa2;animation:b3r 1s linear infinite}@keyframes b3r{to{transform:rotate(360deg)}}
 .b3-bot{padding:0 14px calc(14px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;align-items:center;gap:10px}
@@ -304,7 +356,7 @@ html[dir=rtl] .b3-tt b{font-family:Cairo,system-ui,sans-serif;font-weight:500}
 .b3-card{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid #f5dcdf;border-radius:16px;padding:10px 10px 10px 14px;max-width:min(94vw,520px);width:100%}.b3-card[hidden]{display:none}
 .b3-card div{flex:1;min-width:0;display:flex;flex-direction:column;font-size:12.5px;line-height:1.3}.b3-card small{color:#a58f94;font-size:11px}.b3-card b{font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .b3-card button{flex:none;font-size:12.5px;padding:10px 14px;border-radius:99px;background:#4a2f35;color:#fdf3f3}.b3-card button[disabled]{background:#f5dcdf;color:#4a2f35}
-.b3-note{font-size:10.5px;color:#a58f94;text-align:center;max-width:420px}
+.b3-hint{font-size:11.5px;color:#a58f94}.b3-note{font-size:10.5px;color:#a58f94;text-align:center;max-width:420px}
 @media(min-width:800px){.b3-tt b{font-size:32px}.b3-top{padding:26px 34px 0}.b3-st{padding:20px 60px}}
 `;
   document.head.appendChild(s);

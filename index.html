@@ -532,7 +532,7 @@ function open3D(){
  const fsz=p=>{const d=z=>Math.abs((parseFloat(z[0])||99)-18),L=p.z.filter(z=>z[1]).sort((a,b)=>d(a)-d(b));return(L[0]||p.z.slice().sort((a,b)=>d(a)-d(b))[0])[0]};
  const carrier=car?mk(car.p,car.x):fb?Object.assign(mk(fb,null),{size:fsz(fb)}):null;
  const b=document.querySelector('[data-a="v3d"]');if(b)b.classList.add("ld");
- import("/b3d.js?v=3").then(m=>{if(b)b.classList.remove("ld");m.open({lang:LANG,base:B,charms,pieces,carrier,fallback:fb?{id:fb.i,n:fb.n,p:fb.p}:null,fmt,
+ import("/b3d.js?v=4").then(m=>{if(b)b.classList.remove("ld");m.open({lang:LANG,base:B,charms,pieces,carrier,fallback:fb?{id:fb.i,n:fb.n,p:fb.p}:null,fmt,
   isOnList:id=>inL(id),onAdd:id=>{const p=byId(id);if(!p||inL(id))return;const sz=fsz(p),k=p.i+"|"+sz;S.list[k]={id:p.i,s:sz,q:1};save();if(S.scr=="list")R()}})})
  .catch(e=>{if(b)b.classList.remove("ld");console.warn(e)})}
 $("app").addEventListener("input",e=>{if(e.target.id=="fn")S.fn=e.target.value;else if(e.target.id=="fp")S.fp=e.target.value});
