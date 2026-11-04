@@ -108,20 +108,31 @@ html[dir=rtl] .wt{letter-spacing:.1em!important}
 @media (min-width:800px){html[dir=rtl] .tile svg{left:50%;right:auto}}
 </style>
 <style>
-.stg{display:grid;grid-template-columns:1fr;gap:16px;margin:6px 0 22px;padding:16px 14px;background:var(--card);border:1px solid var(--line);border-radius:18px}
+.stg{display:grid;grid-template-columns:1fr;gap:18px;margin:6px 0 26px}
+.stgl,.stgp{background:var(--bg)}
 .stgt{font-size:11px;letter-spacing:.16em;color:var(--mute);margin-bottom:10px}
-.stgr{display:flex;align-items:flex-end;justify-content:center;gap:6px;height:210px}
-.stc{flex:1 1 0;min-width:0;max-width:130px;border-radius:14px;overflow:hidden;transform-origin:bottom center;transform:scale(calc(1 - var(--d)*.1));opacity:calc(1 - var(--d)*.22);filter:blur(calc(var(--d)*.7px));transition:all .45s cubic-bezier(.2,.8,.2,1);background:linear-gradient(160deg,var(--line),var(--bg))}
-.stc .ph{height:140px;border-radius:0}
-.stc.f{flex-basis:0;flex-grow:1.7;max-width:170px;box-shadow:0 14px 30px -12px rgba(74,47,53,.35);z-index:2}.stc.f .ph{height:190px}
-.stgh{text-align:center;font-size:12px;color:var(--mute);margin-top:12px}
-.stgm{display:flex;justify-content:space-between;gap:12px;align-items:baseline}.stgm b{font-weight:400;font-size:16px;flex:1;min-width:0}.stgm span{white-space:nowrap}
-.stga{display:flex;gap:8px;margin-top:12px}.stga .btn{padding:10px 20px;font-size:14px}
-.stgi{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line);animation:stgin .4s both}
-.stgb{display:flex;align-items:center;gap:12px;flex:1;min-width:0;text-align:start}.stgth{width:58px;height:58px;border-radius:10px;overflow:hidden;flex:none}.stgth .ph{height:58px}
+.stgr{position:relative;height:300px;overflow:hidden;touch-action:pan-y;-webkit-user-select:none;user-select:none;direction:ltr;cursor:grab;--bw:46%;--k1:84%;--k2:16%}
+.stgr.drag{cursor:grabbing}
+.stc{position:absolute;top:0;left:calc(50% - var(--bw)/2);width:var(--bw);height:100%;object-fit:contain;object-position:center bottom;mix-blend-mode:multiply;transform-origin:center bottom;transform:translateX(calc(var(--o)*(var(--k1) - var(--d)*var(--k2)) + var(--dx,0px))) scale(calc(1 - var(--d)*.2));opacity:calc(1 - var(--d)*.3);filter:blur(calc(var(--d)*1px));z-index:calc(10 - var(--d));transition:transform .5s cubic-bezier(.2,.8,.2,1),opacity .5s,filter .5s;cursor:pointer;-webkit-user-drag:none}
+.stgr.drag .stc{transition:none}
+svg.stc.ic{stroke:var(--pink);fill:none;stroke-width:2.5;padding:20%}
+.stgnav{display:flex;align-items:center;justify-content:center;gap:18px;margin-top:10px;font-size:13px;color:var(--mute)}
+.stga{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);font-size:22px;line-height:1;color:var(--ink)}
+.stgh{text-align:center;font-size:12px;color:var(--mute);margin-top:6px}
+.stgm{display:flex;justify-content:space-between;gap:14px;align-items:flex-start}.stgn1{flex:1;min-width:0}
+.stgnm{font:400 19px/1.3 Lora,serif;text-align:start;color:var(--ink)}.stgpr{margin-top:6px;font-size:15px}
+.stgd{color:var(--mute);font-size:13.5px;margin:12px 0 10px}.stgv{font-size:13px}
+.pl{flex:none;width:34px;height:34px;border-radius:50%;border:1px solid var(--pink);color:var(--pinkd);font-size:20px;line-height:1;display:flex;align-items:center;justify-content:center}
+.pl.big{width:52px;height:52px;font-size:28px;background:var(--pink);color:#4a2f35;border:none;box-shadow:0 8px 20px -10px rgba(201,123,139,.8)}
+.pl.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.stgp.sw>*{animation:stgin .35s both}
+.stgi{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line)}
+.stgb{display:flex;align-items:center;gap:12px;flex:1;min-width:0;text-align:start}
+.stgth{width:60px;height:60px;flex:none;object-fit:contain;mix-blend-mode:multiply}svg.stgth.ic{stroke:var(--pink);fill:none;stroke-width:2.5;padding:12px}
 .stgn{display:flex;flex-direction:column;min-width:0}.stgn b{font-weight:400;font-size:13px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.stgn small{color:var(--mute);font-size:12px}
-@keyframes stgin{from{opacity:0;transform:translateX(10px)}to{opacity:1;transform:none}}
-@media(min-width:900px){.stg{grid-template-columns:1.5fr 1fr;gap:36px;padding:28px 32px}.stgr{height:380px;gap:12px}.stc{max-width:190px}.stc .ph{height:260px}.stc.f{max-width:260px}.stc.f .ph{height:340px}.stgp{border-inline-start:1px solid var(--line);padding-inline-start:32px}}
+@keyframes stgin{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:none}}
+@media(min-width:620px){.stg{grid-template-columns:1.5fr 1fr;gap:32px}.stgr{height:360px;--bw:32%;--k1:92%;--k2:12%}.stgp{border-inline-start:1px solid var(--line);padding-inline-start:28px}}
+@media(min-width:900px){.stgr{height:440px}}
 </style>
 </head>
 <body>
@@ -347,10 +358,19 @@ function undHTML(SR){if(!SR)return"";
 const qState=()=>{const q=(S.srch||"").trim(),SR=q?searchRank(q):null;return{SR,L:SR?SR.list:ranked()}};
 const stgList=L=>{if(S.skip||S.srch)return[];const a=L.filter(p=>p.s);const m=a.slice(0,Math.min(5,L.k||5));return m.length?m:a.slice(0,5)};
 const pairs=p=>{const sc=D.filter(x=>x.s&&x.c!=p.c).map(x=>{let s=0;if(x.m==p.m)s+=2;s+=x.h.filter(h=>p.h.includes(h)).length*3;s+=x.x.filter(h=>p.x.includes(h)).length;s+=x.o.filter(h=>p.o.includes(h)).length*2;if(x.p<=p.p*1.3)s+=.5;return[x,s]}).filter(z=>z[1]>=2).sort((a,b)=>b[1]-a[1]||a[0].p-b[0].p);const seen=new Set(),r=[];for(const[x]of sc){if(seen.has(x.c))continue;seen.add(x.c);r.push(x);if(r.length==3)break}return r};
-const stageBlock=L=>{const m=stgList(L);if(!m.length)return"";const f=Math.min(S.fx||0,m.length-1),p=m[f],pr=pairs(p),sz=p.z.length<2,on=Object.values(S.list).some(x=>x.id==p.i);
- return`<div class="stg"><div class="stgl"><div class="stgt">${tt("YOUR TOP MATCHES","أفضل اختياراتك")}</div><div class="stgr">${m.map((x,i)=>`<button class="stc ${i==f?"f":""}" data-a="fx" data-v="${i}" style="--d:${Math.abs(i-f)}">${ph(x)}</button>`).join("")}</div><div class="stgh">${tt("Tap a piece to bring it forward","اضغط على قطعة لعرضها")}</div></div>`+
- `<div class="stgp"><div class="stgt">${tt("IN THIS MATCH","في هذا الاختيار")}</div><div class="stgm"><b>${esc(p.n)}</b><span>${fmt(p.p)}</span></div><div class="stga">${sz||!p.z.find(z=>z[1])?"":""}<button class="btn o" data-a="open" data-v="${p.i}">${tt("View","عرض")}</button>${sz?`<button class="btn" data-a="quick" data-v="${p.i}">${on?"✓ "+tt("Saved","تم الحفظ"):tt("+ Save","+ حفظ")}</button>`:""}</div>`+
- (pr.length?`<div class="stgt" style="margin-top:18px">${tt("WEAR IT WITH","يناسبها مع")}</div>${pr.map(x=>{const on2=Object.values(S.list).some(y=>y.id==x.i);return`<div class="stgi"><button class="stgb" data-a="open" data-v="${x.i}"><span class="stgth">${ph(x)}</span><span class="stgn"><b>${esc(x.n)}</b><small>${t(CATS[x.c][1])} · ${fmt(x.p)}</small></span></button>${x.z.length<2?`<button class="add ${on2?"on":""}" data-a="quick" data-v="${x.i}">${on2?"✓":"+"}</button>`:""}</div>`}).join("")}`:"")+`</div></div>`};
+const inL=id=>Object.values(S.list).some(x=>x.id==id);
+const cut=(p,w,c)=>p.im&&p.im[0]?`<img class="${c}" src="${B+p.im[0]}&width=${w}" alt="" draggable="false" onerror="this.outerHTML='<svg class=&quot;${c} ic&quot; viewBox=&quot;0 0 84 84&quot;>${IC[p.c].replace(/"/g,"&quot;")}</svg>'">`:`<svg class="${c} ic" viewBox="0 0 84 84">${IC[p.c]}</svg>`;
+const plusBtn=(p,big)=>{const one=p.z.length<2,on=inL(p.i);return`<button class="pl ${big?"big":""} ${on?"on":""}" data-a="${one?"quick":"open"}" data-v="${p.i}" aria-label="${one?(on?tt("Remove from list","إزالة"):tt("Add to list","أضف")):tt("Choose size","اختر المقاس")}">${on?"✓":"+"}</button>`};
+const stgPanel=p=>{const pr=pairs(p);return`<div class="stgt">${tt("IN THIS MATCH","في هذا الاختيار")}</div><div class="stgm"><div class="stgn1"><button class="stgnm" data-a="open" data-v="${p.i}">${esc(p.n)}</button><div class="stgpr">${fmt(p.p)}${p.z.length<2?"":` · <span class="mute">${tt("choose size","اختر المقاس")}</span>`}</div></div>${plusBtn(p,1)}</div><p class="stgd">${DESC(p)}</p><button class="ul stgv" data-a="open" data-v="${p.i}">${tt("View details","عرض التفاصيل")}</button>`+
+ (pr.length?`<div class="stgt" style="margin-top:22px">${tt("WEAR IT WITH","يناسبها مع")}</div>${pr.map(x=>`<div class="stgi"><button class="stgb" data-a="open" data-v="${x.i}">${cut(x,200,"stgth")}<span class="stgn"><b>${esc(x.n)}</b><small>${t(CATS[x.c][1])} · ${fmt(x.p)}</small></span></button>${plusBtn(x)}</div>`).join("")}`:"")};
+const stageBlock=L=>{const m=stgList(L);if(!m.length)return"";const f=S.fx=Math.max(0,Math.min(S.fx||0,m.length-1));
+ return`<div class="stg"><div class="stgl"><div class="stgt">${tt("YOUR TOP MATCHES","أفضل اختياراتك")}</div><div class="stgr" id="stgr">${m.map((x,i)=>cut(x,700,"stc"+(i==f?" f":"")).replace(/^<(img|svg) /,`<$1 data-a="fx" data-v="${i}" style="--o:${i-f};--d:${Math.abs(i-f)}" `)).join("")}</div><div class="stgnav"><button class="stga" data-a="fxs" data-v="-1" aria-label="Previous">‹</button><span id="stgc">${f+1} / ${m.length}</span><button class="stga" data-a="fxs" data-v="1" aria-label="Next">›</button></div><div class="stgh">${tt("Swipe to see your other matches","اسحب لرؤية باقي اختياراتك")}</div></div><div class="stgp" id="stgp">${stgPanel(m[f])}</div></div>`};
+function setFx(i){const m=stgList(qState().L);if(!m.length)return;i=Math.max(0,Math.min(i,m.length-1));S.fx=i;document.querySelectorAll("#stgr .stc").forEach((el,j)=>{el.style.setProperty("--o",j-i);el.style.setProperty("--d",Math.abs(j-i));el.classList.toggle("f",j==i)});const c=$("stgc");if(c)c.textContent=(i+1)+" / "+m.length;const p=$("stgp");if(p){p.innerHTML=stgPanel(m[i]);p.classList.remove("sw");void p.offsetWidth;p.classList.add("sw")}}
+let SWP=null;document.addEventListener("pointerdown",e=>{const r=e.target.closest("#stgr");if(!r)return;SWP={x:e.clientX,y:e.clientY,r,m:false}});
+document.addEventListener("pointermove",e=>{if(!SWP)return;const dx=e.clientX-SWP.x,dy=e.clientY-SWP.y;if(!SWP.m&&Math.abs(dx)>8&&Math.abs(dx)>Math.abs(dy)){SWP.m=true;SWP.r.classList.add("drag")}if(SWP.m)SWP.r.style.setProperty("--dx",dx+"px")});
+const swEnd=e=>{if(!SWP)return;const s=SWP;SWP=null;if(!s.m)return;const dx=e.clientX-s.x,w=s.r.clientWidth*.25;s.r.classList.remove("drag");s.r.style.removeProperty("--dx");S.swT=Date.now();const n=Math.abs(dx)<40?0:Math.abs(dx)>w*2.4?2:1;setFx((S.fx||0)+(dx<0?n:-n))};
+document.addEventListener("pointerup",swEnd);document.addEventListener("pointercancel",swEnd);
+document.addEventListener("keydown",e=>{if(S.scr!="results"||!$("stgr")||e.target.id=="q")return;if(e.key=="ArrowRight")setFx((S.fx||0)+1);else if(e.key=="ArrowLeft")setFx((S.fx||0)-1)});
 const resBlock=L=>`<div class="cards">${L.slice(0,S.n).map((p,ix)=>{const dv=!S.srch&&ix==L.k&&L.k<L.length&&!S.skip?`<div class="dv">${L.k?t("Close to what you chose"):t("Closest pieces")}</div>`:"";const on=Object.values(S.list).some(x=>x.id==p.i);return dv+`<div class="pc"><button data-a="open" data-v="${p.i}" style="text-align:left">${ph(p)}</button><div class="pb"><div class="pn">${esc(p.n)}</div><div class="pp">${fmt(p.p)}</div><div class="pf"><span>${t(p.m)}${p.s?"":" · "+t("sold out")}</span>${p.s?`<button class="add ${on?"on":""}" data-a="quick" data-v="${p.i}">${on?"✓":"+"}</button>`:""}</div></div></div>`}).join("")}</div>${S.n<L.length?`<button class="btn o" style="margin:18px auto 0;display:block" data-a="more">${t("Show more")}</button>`:""}`;
 const hdTxt=(SR,L)=>LANG=="ar"?(SR?(!L.length?"لا توجد نتائج":SR.dropped.length?"لا يوجد تطابق تام — أقرب القطع":"تم العثور على "+pcs(L.length)):heading()):SR?(!L.length?"Nothing found":SR.dropped.length?"No exact match — closest pieces":`${nw(L.length)} ${L.length==1?"piece":"pieces"} found`):heading();
 const cntTxt=(SR,L)=>LANG=="ar"?"اضغط على أي قطعة لتكبيرها · النتائج: "+(SR?L.length:(S.skip?L.length:L.k)):SR?`Tap a piece to see it larger · ${L.length} match${L.length==1?"":"es"}`:`Tap a piece to see it larger · ${S.skip?L.length:L.k} match${(S.skip?L.length:L.k)==1?"":"es"}`;
@@ -426,7 +446,8 @@ $("app").addEventListener("click",e=>{const b=e.target.closest("[data-a]");if(!b
  else if(a=="skip"){S.fx=0;S.skip=true;S.n=8;S.form=null;go("results")}
  else if(a=="form"){S.form=v||(S.cat!=null?null:null);S.n=8;R()}
  else if(a=="more"){S.n+=8;R()}
- else if(a=="fx"){const m=stgList(qState().L),i=+v;if(S.fx==i&&m[i]){S.pid=m[i].i;S.size=null;S.dback=null;go("detail")}else{S.fx=i;R()}}
+ else if(a=="fx"){if(Date.now()-(S.swT||0)<400)return;const i=+v;if(S.fx==i){const m=stgList(qState().L);if(m[i]){S.pid=m[i].i;S.size=null;S.dback=null;go("detail")}}else setFx(i)}
+ else if(a=="fxs")setFx((S.fx||0)+(+v));
  else if(a=="open"){S.pid=+v;S.size=null;S.dback=null;go("detail")}
  else if(a=="sugopen"){S.pid=+v;S.size=null;S.dback="list";go("detail")}
  else if(a=="sugadd"){const p=byId(+v);if(!p)return;const sz=(p.z.find(z=>z[1])||p.z[0])[0],k=p.i+"|"+sz;S.list[k]={id:p.i,s:sz,q:(S.list[k]?S.list[k].q:0)+1};S.sugSig=sugSig();save();R()}
@@ -435,7 +456,7 @@ $("app").addEventListener("click",e=>{const b=e.target.closest("[data-a]");if(!b
  else if(a=="list")go("list");
  else if(a=="quick"||a=="saveit"){let id,sz;if(a=="quick"){id=+v;const p=byId(id);sz=(p.z.find(z=>z[1])||p.z[0])[0]}else{[id,sz]=v.split("|");id=+id}
   const k=id+"|"+sz,y=Object.entries(S.list).find(([kk,x])=>x.id==id&&a=="quick");
-  if(a=="quick"&&y)delete S.list[y[0]];else S.list[k]={id,s:sz,q:(S.list[k]?S.list[k].q:0)+1};save();if(a=="saveit")go("list");else R()}
+  if(a=="quick"&&y)delete S.list[y[0]];else S.list[k]={id,s:sz,q:(S.list[k]?S.list[k].q:0)+1};save();if(a=="saveit")go("list");else{R()}}
  else if(a=="inc"||a=="dec"){const x=S.list[v];x.q+=a=="inc"?1:-1;if(x.q<1)delete S.list[v];save();R()}
  else if(a=="send"){if(!Object.keys(S.list).length)return;if(!S.store){go("store");return}S.err="";go("send")}
  else if(a=="submit")submitList();
