@@ -541,7 +541,7 @@ document.addEventListener("pointerdown",e=>{const h=document.getElementById("hdr
 addEventListener("message",e=>{if(e.origin===location.origin&&e.data&&e.data.pm==="exit")close()});
 })();
 (()=>{if(window.top!==window)return;
-/* Hidden stock finder: press and hold the header ~3 s -> password -> search any piece -> which stores have it. Nothing visible on the page. */
+/* Hidden stock finder: tap the bottom-left corner of the screen 6 times quickly -> password -> search any piece -> which stores have it. Nothing visible on the page. */
 let tok=null,tm=0,stock=null,box=null;
 const E=x=>String(x==null?"":x).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const IB="https://cdn.shopify.com/s/files/1/0707/6066/1191/files/";
@@ -577,10 +577,11 @@ function search(){
   };
   q.oninput=()=>{clearTimeout(tmr);tmr=setTimeout(run,250)};setTimeout(()=>q.focus(),50)}
 function open(){if(box)return;box=document.createElement("div");box.id="fnd";document.body.appendChild(box);document.documentElement.style.overflow="hidden";if(tok)search();else pw("")}
-document.addEventListener("pointerdown",e=>{const h=document.getElementById("hdr");clearTimeout(tm);
-  if(!h||h.hidden||!h.contains(e.target)||box)return;tm=setTimeout(open,3000)},true);
-["pointerup","pointercancel","pointermove","scroll"].forEach(t=>document.addEventListener(t,()=>clearTimeout(tm),true));
-document.addEventListener("contextmenu",e=>{const h=document.getElementById("hdr");if(h&&h.contains(e.target))e.preventDefault()},true);
+let n=0,t=0;
+document.addEventListener("pointerdown",e=>{if(box)return;
+  if(!(e.clientX<90&&e.clientY>innerHeight-90)){n=0;return}
+  const now=Date.now();n=(n>0&&now-t>1500)?1:n+1;t=now;
+  if(n>=6){n=0;open()}},true);
 })();
 R();
 </script>
