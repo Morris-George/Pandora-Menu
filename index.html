@@ -540,49 +540,6 @@ document.addEventListener("pointerdown",e=>{const h=document.getElementById("hdr
  if(n>=10){n=0;open()}},true);
 addEventListener("message",e=>{if(e.origin===location.origin&&e.data&&e.data.pm==="exit")close()});
 })();
-(()=>{if(window.top!==window)return;
-/* Hidden stock finder: tap the bottom-left corner of the screen 6 times quickly -> password -> search any piece -> which stores have it. Nothing visible on the page. */
-let tok=null,tm=0,stock=null,box=null;
-const E=x=>String(x==null?"":x).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-const IB="https://cdn.shopify.com/s/files/1/0707/6066/1191/files/";
-const st=document.createElement("style");st.textContent="#hdr{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}#fnd{position:fixed;inset:0;z-index:99998;background:#fdf3f3;color:#4a2f35;font:300 15px/1.4 Poppins,system-ui,sans-serif;display:flex;flex-direction:column}#fnd .fb{display:flex;gap:8px;padding:12px 14px;border-bottom:1px solid #f5dcdf;background:#fff;align-items:center}#fnd input{flex:1;min-width:0;font:inherit;padding:12px 16px;border:1px solid #f5dcdf;border-radius:99px;background:#fff;color:#4a2f35;outline:0}#fnd button{font:inherit;border:0;border-radius:99px;padding:12px 18px;background:#4a2f35;color:#fdf3f3;cursor:pointer}#fnd .fx{background:none;color:#a58f94;border:1px solid #f5dcdf}#fnd .fl{flex:1;overflow:auto;padding:12px 14px}#fnd .fr{display:flex;gap:12px;background:#fff;border:1px solid #f5dcdf;border-radius:14px;padding:10px;margin-bottom:10px}#fnd .fi{width:72px;height:72px;border-radius:10px;background:#fdf3f3;flex:none;overflow:hidden}#fnd .fi img{width:100%;height:100%;object-fit:cover}#fnd .ft{flex:1;min-width:0}#fnd .ft b{font-weight:400;display:block}#fnd small{color:#a58f94;font-size:12.5px}#fnd .ch{display:inline-block;margin:4px 4px 0 0;padding:3px 10px;border-radius:99px;background:#e7f4ec;color:#3f7d5a;font-size:12.5px}#fnd .ch.n{background:#fbeaec;color:#b3445a}#fnd .fp{margin:auto;display:flex;flex-direction:column;gap:12px;width:min(320px,86%)}#fnd .fe{color:#b3445a;min-height:20px;font-size:14px}";document.head.appendChild(st);
-function shut(){if(box){box.remove();box=null}document.documentElement.style.overflow=""}
-function lock(msg){tok=null;stock=null;pw(msg||"")}
-function pw(msg){box.innerHTML=`<div class="fp"><input id="fpw" type="password" placeholder="Password" autocomplete="off"><div class="fe" id="fer">${E(msg)}</div><button id="fgo">Enter</button><button class="fx" id="fcl">Close</button></div>`;
-  const go=async()=>{const v=document.getElementById("fpw").value;if(!v)return;document.getElementById("fer").textContent="";
-    try{const r=await fetch("/api/find-login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({password:v})});const j=await r.json().catch(()=>({}));
-      if(!r.ok||!j.ok){document.getElementById("fer").textContent=j.error||"Could not check.";document.getElementById("fpw").value="";return}
-      tok=j.token;search()}catch(e){document.getElementById("fer").textContent="No connection."}};
-  document.getElementById("fgo").onclick=go;document.getElementById("fcl").onclick=shut;document.getElementById("fpw").onkeydown=e=>{if(e.key==="Enter")go()};setTimeout(()=>{const i=document.getElementById("fpw");i&&i.focus()},50)}
-async function load(){
-  const r=await fetch("/api/find-stock",{headers:{Authorization:"Bearer "+tok}});
-  if(r.status===401){lock("Session ended. Enter the password again.");return false}
-  const j=await r.json().catch(()=>({}));if(!r.ok||!j.ok)throw new Error(j.error||"error");
-  stock=j.stock;return true}
-function search(){
-  box.innerHTML=`<div class="fb"><input id="fq" placeholder="Piece name or SKU" autocomplete="off" autocapitalize="off"><button class="fx" id="fcl">Close</button></div><div class="fl" id="fl"><small>Type a name or SKU, e.g. "heart charm" or 794769C01</small></div>`;
-  document.getElementById("fcl").onclick=shut;
-  const q=document.getElementById("fq"),fl=document.getElementById("fl");let tmr=0;
-  const run=async()=>{
-    const words=q.value.toLowerCase().split(/\s+/).filter(Boolean);
-    if(!words.length){fl.innerHTML="";return}
-    fl.innerHTML="<small>Checking stock in all stores…</small>";
-    try{if(!stock&&!(await load()))return}catch(e){fl.innerHTML=`<small>Could not read stock (${E(e.message)}). Try again.</small>`;return}
-    const hits=ALL.filter(p=>{const h=(p.n+" "+p.z.map(z=>z[2]).join(" ")+" "+(p.k||"")).toLowerCase();return words.every(w=>h.includes(w))}).slice(0,40);
-    if(!hits.length){fl.innerHTML="<small>No piece matches that.</small>";return}
-    fl.innerHTML=hits.map(p=>{
-      const rows=p.z.map(z=>{const sk=String(z[2]||"").toUpperCase(),S=stock[sk]||[];
-        return `<div><small>${E(p.z.length>1||!/^one size$/i.test(z[0])?z[0]+" · ":"")}${E(sk)}</small><br>${S.length?S.map(x=>`<span class="ch">${E(x)}</span>`).join(""):'<span class="ch n">Not in any store</span>'}</div>`}).join("");
-      return `<div class="fr"><div class="fi">${p.im&&p.im[0]?`<img src="${IB}${E(p.im[0])}${p.im[0].includes("?")?"&":"?"}width=200" alt="">`:""}</div><div class="ft"><b>${E(p.n)}</b>${rows}</div></div>`}).join("");
-  };
-  q.oninput=()=>{clearTimeout(tmr);tmr=setTimeout(run,250)};setTimeout(()=>q.focus(),50)}
-function open(){if(box)return;box=document.createElement("div");box.id="fnd";document.body.appendChild(box);document.documentElement.style.overflow="hidden";if(tok)search();else pw("")}
-let n=0,t=0;
-document.addEventListener("pointerdown",e=>{if(box)return;
-  if(!(e.clientX<90&&e.clientY>innerHeight-90)){n=0;return}
-  const now=Date.now();n=(n>0&&now-t>1500)?1:n+1;t=now;
-  if(n>=6){n=0;open()}},true);
-})();
 R();
 </script>
 <script>if(typeof S!="undefined"&&S.store)loadStock(S.store)</script>

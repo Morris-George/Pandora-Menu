@@ -78,6 +78,15 @@ iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:var(
 .ban b{font-weight:400;font-size:16px;display:block}.ban small{color:var(--mute);font-size:13px}
 
 @media (max-width:760px){.inbox{grid-template-columns:1fr;grid-template-rows:auto 1fr}.q{border-right:0;border-bottom:1px solid var(--line);max-height:38vh}.det{padding:16px}}
+/* Stock finder (opens with the private finder code typed on the PIN pad) */
+.fnd{height:100%;display:flex;flex-direction:column;min-height:0}
+.fnd .fb{display:flex;gap:8px;padding:12px 14px;border-bottom:1px solid var(--line);background:var(--card);align-items:center}
+.fnd input{flex:1;min-width:0;font:inherit;font-size:16px;padding:13px 18px;border:1px solid var(--line);border-radius:99px;background:#fff;color:var(--ink);outline:0}
+.fnd .fl{flex:1;overflow:auto;padding:14px}
+.fnd .fr{display:flex;gap:14px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px;margin-bottom:10px}
+.fnd .fi{width:84px;height:84px;border-radius:10px;background:var(--bg);flex:none;overflow:hidden}.fnd .fi img{width:100%;height:100%;object-fit:cover;display:block}
+.fnd .ft{flex:1;min-width:0}.fnd .ft b{font-weight:400;font-size:16px;display:block}
+.ch{display:inline-block;margin:4px 4px 0 0;padding:3px 11px;border-radius:99px;background:var(--okbg);color:var(--ok);font-size:13px}.ch.n{background:#fbeaec;color:#b3445a}
 </style>
 </head>
 <body>
@@ -89,7 +98,7 @@ const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",
 const fmt=n=>"EGP "+Math.round(n).toLocaleString("en-US");
 const LOCK_AFTER=5*60*1000, POLL=15000;
 
-let A={token:null,store:null,tab:"inbox",locked:true,orders:[],sel:null,known:null,unseen:new Set(),fresh:new Set(),pin:"",err:"",busy:false,offline:false,lastTouch:Date.now(),menuFor:null,view:"waiting",done:[],doneBusy:false,range:"today",day:""};
+let A={token:null,store:null,tab:"inbox",locked:true,orders:[],sel:null,known:null,unseen:new Set(),fresh:new Set(),pin:"",err:"",busy:false,offline:false,lastTouch:Date.now(),menuFor:null,finder:false,ftok:null,fstock:null,view:"waiting",done:[],doneBusy:false,range:"today",day:""};
 const cur=()=>A.view=="done"?A.done:A.orders;
 
 const LOGO=h=>`<svg width="${Math.round(h*1433/2005)}" height="${h}" viewBox="0 0 1433 2005" aria-hidden="true"><use href="#lg"/></svg>`;
@@ -151,8 +160,37 @@ function inboxView(){
   const sel=cur().find(o=>o.id==A.sel);
   return `<div class="inbox"><div class="q"><div class="seg"><button data-view="waiting" class="${A.view=="done"?"":"on"}">Waiting · <span id="wc">${A.orders.length}</span></button><button data-view="done" class="${A.view=="done"?"on":""}">Done</button></div>${A.view=="done"?rangeHTML():""}<div id="ql">${listHTML()}</div></div><div class="det" id="dt">${detailHTML(sel)}</div></div>`;
 }
+function finderView(){
+  return `<div class="bar"><div class="brand"><span style="color:var(--ink)">${LOGO(26)}</span>PANDORA</div><div class="store">Stock finder</div><button class="lock" data-act="fclose">Close</button></div>
+  <main><div class="fnd"><div class="fb"><input id="fq" placeholder="Piece name or SKU" autocomplete="off" autocapitalize="off"></div><div class="fl" id="fl"><div class="empty">Type a name or SKU to see which stores have it.</div></div></div></main>
+  <iframe id="cat" src="/" title="" style="position:absolute;width:0;height:0;border:0;visibility:hidden" tabindex="-1"></iframe>`;
+}
+function catalogue(){try{return $("cat").contentWindow.eval("ALL")}catch(e){return null}}
+let ftm=0;
+async function fsearch(){
+  const fl=$("fl");if(!fl)return;
+  const words=$("fq").value.toLowerCase().split(/\s+/).filter(Boolean);
+  if(!words.length){fl.innerHTML=`<div class="empty">Type a name or SKU to see which stores have it.</div>`;return}
+  const ALL=catalogue();
+  if(!ALL){fl.innerHTML=`<div class="empty">Loading the catalogue…</div>`;clearTimeout(ftm);ftm=setTimeout(fsearch,700);return}
+  if(!A.fstock){
+    fl.innerHTML=`<div class="empty">Checking stock in all stores…</div>`;
+    try{const{r,j}=await api("/api/find-stock",{headers:{Authorization:"Bearer "+A.ftok}});
+      if(r.status==401){A.finder=false;A.ftok=null;A.err="Session ended. Enter the code again.";return render()}
+      if(!r.ok||!j.ok)throw new Error(j.error||"error");A.fstock=j.stock}
+    catch(e){fl.innerHTML=`<div class="empty">Could not read stock (${esc(e.message)}).</div>`;return}
+  }
+  const hits=ALL.filter(p=>{const h=(p.n+" "+p.z.map(z=>z[2]).join(" ")+" "+(p.k||"")).toLowerCase();return words.every(w=>h.includes(w))}).slice(0,40);
+  if(!hits.length){fl.innerHTML=`<div class="empty">No piece matches that.</div>`;return}
+  fl.innerHTML=hits.map(p=>{
+    const rows=p.z.map(z=>{const sk=String(z[2]||"").toUpperCase(),S=A.fstock[sk]||[];
+      return `<div style="margin-top:6px"><small>${p.z.length>1||!/^one size$/i.test(z[0])?esc(z[0])+" · ":""}SKU ${esc(sk)}</small><br>${S.length?S.map(x=>`<span class="ch">${esc(x)}</span>`).join(""):'<span class="ch n">Not in any store</span>'}</div>`}).join("");
+    const im=p.im&&p.im[0];
+    return `<div class="fr"><div class="fi">${im?`<img src="${B+esc(im)}${im.includes("?")?"&":"?"}width=240" alt="" onerror="this.remove()">`:""}</div><div class="ft"><b>${esc(p.n)}</b>${rows}</div></div>`}).join("");
+}
 function render(){
   const r=$("root");
+  if(A.finder){r.innerHTML=finderView();const q=$("fq");q.oninput=()=>{clearTimeout(ftm);ftm=setTimeout(fsearch,250)};setTimeout(()=>q.focus(),60);return}
   if(!A.token){r.innerHTML=pinView("Staff sign-in","Enter your store PIN");return}
   const menu=`<iframe id="mf" title="Menu" src="${A.menuFor?`/?store=${encodeURIComponent(A.menuFor)}`:"about:blank"}" ${A.tab=="menu"?"":"hidden"}></iframe>`;
   r.innerHTML=shell(menu+`<div class="pane" id="ib" ${A.tab=="inbox"?"":"hidden"}>${inboxView()}</div>`);
@@ -186,7 +224,7 @@ function beep(){try{ac=ac||new (window.AudioContext||window.webkitAudioContext)(
 
 /* ---------- network ---------- */
 async function api(path,opt={}){
-  const r=await fetch(path,{...opt,headers:{"Content-Type":"application/json",...(A.token?{Authorization:"Bearer "+A.token}:{})}});
+  const r=await fetch(path,{...opt,headers:{"Content-Type":"application/json",...(A.token?{Authorization:"Bearer "+A.token}:{}),...(opt.headers||{})}});
   const j=await r.json().catch(()=>({}));
   return{r,j};
 }
@@ -243,7 +281,12 @@ async function login(){
   A.busy=true;A.err="";
   try{
     const{r,j}=await api("/api/staff-login",{method:"POST",body:JSON.stringify({pin:A.pin})});
-    if(!r.ok||!j.ok){A.err=j.error||"Could not check the PIN.";A.pin="";A.busy=false;return A.token?refreshPin():render()}
+    if(!r.ok||!j.ok){
+      if(r.status==401){ // not a store PIN: maybe the private finder code
+        const f=await api("/api/find-login",{method:"POST",body:JSON.stringify({password:A.pin})});
+        if(f.r.ok&&f.j.ok){A.finder=true;A.ftok=f.j.token;A.fstock=null;A.pin="";A.err="";A.busy=false;return render()}
+      }
+      A.err=j.error||"Could not check the PIN.";A.pin="";A.busy=false;return A.token?refreshPin():render()}
     const changed=A.store!==j.store;
     A.token=j.token;A.store=j.store;A.locked=false;A.pin="";A.err="";A.busy=false;A.lastTouch=Date.now();
     A.v=null;
@@ -280,7 +323,8 @@ document.addEventListener("click",e=>{
   if(op){A.sel=op.dataset.open;A.unseen.delete(A.sel);refresh();return}
   const act=e.target.closest("[data-act]");
   if(act){const a=act.dataset.act;
-    if(a=="exit"){try{parent.postMessage({pm:"exit"},location.origin)}catch(e){}}
+    if(a=="fclose"){A.finder=false;A.ftok=null;A.fstock=null;A.pin="";A.err="";try{parent.postMessage({pm:"exit"},location.origin)}catch(e){}render()}
+    else if(a=="exit"){try{parent.postMessage({pm:"exit"},location.origin)}catch(e){}}
     else if(a=="lock"){A.locked=true;A.pin="";A.err="";A.sel=null;A.view="waiting";A.done=[];render()}
     else if(a=="serve")setStatus(act.dataset.id,"serving");
     else if(a=="done")setStatus(act.dataset.id,"done");
@@ -291,6 +335,7 @@ document.addEventListener("change",e=>{
   if(e.target&&e.target.id=="dday"&&e.target.value){A.range="day";A.day=e.target.value;A.sel=null;A.done=[];const ib=$("ib");if(ib)ib.innerHTML=inboxView();loadDone()}
 });
 document.addEventListener("keydown",e=>{
+  if(A.finder)return;
   if(A.token&&!(A.locked&&A.tab=="inbox"))return;
   if(/^\d$/.test(e.key)&&A.pin.length<6){A.pin+=e.key;A.err="";const d=document.querySelectorAll(".dots i");d.forEach((x,i)=>x.classList.toggle("f",i<A.pin.length));if(A.pin.length==6)login()}
   else if(e.key=="Backspace"){A.pin=A.pin.slice(0,-1);const d=document.querySelectorAll(".dots i");d.forEach((x,i)=>x.classList.toggle("f",i<A.pin.length))}
