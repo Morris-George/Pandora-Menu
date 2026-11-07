@@ -81,6 +81,26 @@ function tokenStore(req) {
   } catch (e) { return null; }
 }
 
+// ---- stock-finder password + token (separate from the store PINs; env FINDER_PASSWORD) ----
+function finderPasswordOk(pw) {
+  const want = Buffer.from(String(process.env.FINDER_PASSWORD || '')), got = Buffer.from(String(pw || ''));
+  return want.length > 0 && want.length === got.length && crypto.timingSafeEqual(want, got);
+}
+function makeFinderToken() {
+  const p = Buffer.from(JSON.stringify({ f: 1, e: Date.now() + 3 * 3600 * 1000 })).toString('base64url');
+  return p + '.' + sign('finder.' + p);
+}
+function finderOk(req) {
+  if (!process.env.STAFF_SECRET || !process.env.FINDER_PASSWORD) return false;
+  const m = /^Bearer (.+)$/.exec(req.headers.authorization || '');
+  if (!m) return false;
+  const [p, sig] = m[1].split('.');
+  if (!p || !sig) return false;
+  const want = Buffer.from(sign('finder.' + p)), got = Buffer.from(sig);
+  if (want.length !== got.length || !crypto.timingSafeEqual(want, got)) return false;
+  try { const d = JSON.parse(Buffer.from(p, 'base64url').toString('utf8')); return d.f === 1 && d.e > Date.now(); } catch (e) { return false; }
+}
+
 const pad3 = n => String(n).padStart(3, '0');
 
-module.exports = { STORES, RETAIN_SECONDS, cairoDate, redis, redisConf, send, readBody, ip, pinStore, makeToken, tokenStore, pad3 };
+module.exports = { STORES, RETAIN_SECONDS, cairoDate, redis, redisConf, send, readBody, ip, pinStore, makeToken, tokenStore, pad3, finderPasswordOk, makeFinderToken, finderOk };
