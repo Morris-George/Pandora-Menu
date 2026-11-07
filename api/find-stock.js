@@ -1,5 +1,5 @@
 // Which stores have each SKU right now, across ALL stores, from ERPNext ("Branches Stock Balance").
-//   GET /api/find-stock  (Authorization: Bearer <finder token>)  ->  {ok, at, stock:{ "794769C01":["City Stars","CFC"], ... }}
+//   GET /api/find-stock  (Authorization: Bearer <finder token>)  ->  {ok, at, stock:{ "794769C01":{"City Stars":3,"CFC":1}, ... }}  (quantity per store)
 // Only for the hidden stock finder: no password-less access. ERP is asked at most once every 5 minutes (answer kept in Redis).
 // Env vars (Vercel): ERP_URL, ERP_API_KEY, ERP_API_SECRET (same as /api/stock), FINDER_PASSWORD, STAFF_SECRET.
 const { redis, send, finderOk } = require('./_lib');
@@ -9,7 +9,7 @@ const WH2STORE = {
   'Mall of Egypt - AN': 'Mall Of Egypt', 'Mall of Arabia - AN': 'Mall Of Arabia', 'City Center Alex - AN': 'CC Alexandria'
 };
 const pad = n => String(n).padStart(2, '0');
-const KEY = 'pm:findstock';
+const KEY = 'pm:findstock2';
 
 module.exports = async function handler(req, res) {
   if (!finderOk(req)) return send(res, 401, { ok: false, error: 'locked' });
@@ -32,11 +32,10 @@ module.exports = async function handler(req, res) {
       const st = x && !Array.isArray(x) && WH2STORE[x.warehouse];
       if (!st || !(Number(x.bal_qty) > 0) || !x.sku) continue;
       const k = String(x.sku).trim().toUpperCase();
-      (m[k] = m[k] || new Set()).add(st);
+      m[k] = m[k] || {};
+      m[k][st] = (m[k][st] || 0) + Number(x.bal_qty);
     }
-    const stock = {};
-    for (const k in m) stock[k] = [...m[k]];
-    const out = { ok: true, at: new Date().toISOString(), stock };
+    const out = { ok: true, at: new Date().toISOString(), stock: m };
     await redis(['SET', KEY, JSON.stringify(out), 'EX', 300]).catch(() => {});
     return send(res, 200, out);
   } catch (e) {
