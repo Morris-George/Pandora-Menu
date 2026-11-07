@@ -161,36 +161,12 @@ function inboxView(){
   return `<div class="inbox"><div class="q"><div class="seg"><button data-view="waiting" class="${A.view=="done"?"":"on"}">Waiting · <span id="wc">${A.orders.length}</span></button><button data-view="done" class="${A.view=="done"?"on":""}">Done</button></div>${A.view=="done"?rangeHTML():""}<div id="ql">${listHTML()}</div></div><div class="det" id="dt">${detailHTML(sel)}</div></div>`;
 }
 function finderView(){
-  return `<div class="bar"><div class="brand"><span style="color:var(--ink)">${LOGO(26)}</span>PANDORA</div><div class="store">Stock finder</div><button class="lock" data-act="fclose">Close</button></div>
-  <main><div class="fnd"><div class="fb"><input id="fq" placeholder="Piece name or SKU" autocomplete="off" autocapitalize="off"></div><div class="fl" id="fl"><div class="empty">Type a name or SKU to see which stores have it.</div></div></div></main>
-  <iframe id="cat" src="/" title="" style="position:absolute;width:0;height:0;border:0;visibility:hidden" tabindex="-1"></iframe>`;
-}
-function catalogue(){try{return $("cat").contentWindow.eval("ALL")}catch(e){return null}}
-let ftm=0;
-async function fsearch(){
-  const fl=$("fl");if(!fl)return;
-  const words=$("fq").value.toLowerCase().split(/\s+/).filter(Boolean);
-  if(!words.length){fl.innerHTML=`<div class="empty">Type a name or SKU to see which stores have it.</div>`;return}
-  const ALL=catalogue();
-  if(!ALL){fl.innerHTML=`<div class="empty">Loading the catalogue…</div>`;clearTimeout(ftm);ftm=setTimeout(fsearch,700);return}
-  if(!A.fstock){
-    fl.innerHTML=`<div class="empty">Checking stock in all stores…</div>`;
-    try{const{r,j}=await api("/api/find-stock",{headers:{Authorization:"Bearer "+A.ftok}});
-      if(r.status==401){A.finder=false;A.ftok=null;A.err="Session ended. Enter the code again.";return render()}
-      if(!r.ok||!j.ok)throw new Error(j.error||"error");A.fstock=j.stock}
-    catch(e){fl.innerHTML=`<div class="empty">Could not read stock (${esc(e.message)}).</div>`;return}
-  }
-  const hits=ALL.filter(p=>{const h=(p.n+" "+p.z.map(z=>z[2]).join(" ")+" "+(p.k||"")).toLowerCase();return words.every(w=>h.includes(w))}).slice(0,40);
-  if(!hits.length){fl.innerHTML=`<div class="empty">No piece matches that.</div>`;return}
-  fl.innerHTML=hits.map(p=>{
-    const rows=p.z.map(z=>{const sk=String(z[2]||"").toUpperCase(),S=A.fstock[sk]||[];
-      return `<div style="margin-top:6px"><small>${p.z.length>1||!/^one size$/i.test(z[0])?esc(z[0])+" · ":""}SKU ${esc(sk)}</small><br>${S.length?S.map(x=>`<span class="ch">${esc(x)}</span>`).join(""):'<span class="ch n">Not in any store</span>'}</div>`}).join("");
-    const im=p.im&&p.im[0];
-    return `<div class="fr"><div class="fi">${im?`<img src="${B+esc(im)}${im.includes("?")?"&":"?"}width=240" alt="" onerror="this.remove()">`:""}</div><div class="ft"><b>${esc(p.n)}</b>${rows}</div></div>`}).join("");
+  return `<div class="bar"><div class="brand"><span style="color:var(--ink)">${LOGO(26)}</span>PANDORA</div><div class="store">All stores</div><button class="lock" data-act="fclose">Close</button></div>
+  <main><iframe id="fm" title="Stock finder" src="/?find=1"></iframe></main>`;
 }
 function render(){
   const r=$("root");
-  if(A.finder){r.innerHTML=finderView();const q=$("fq");q.oninput=()=>{clearTimeout(ftm);ftm=setTimeout(fsearch,250)};setTimeout(()=>q.focus(),60);return}
+  if(A.finder){r.innerHTML=finderView();return}
   if(!A.token){r.innerHTML=pinView("Staff sign-in","Enter your store PIN");return}
   const menu=`<iframe id="mf" title="Menu" src="${A.menuFor?`/?store=${encodeURIComponent(A.menuFor)}`:"about:blank"}" ${A.tab=="menu"?"":"hidden"}></iframe>`;
   r.innerHTML=shell(menu+`<div class="pane" id="ib" ${A.tab=="inbox"?"":"hidden"}>${inboxView()}</div>`);
