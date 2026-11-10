@@ -144,11 +144,23 @@ function shell(inner){
   <button class="lock" data-act="cust">Customer view</button><button class="lock" data-act="lock">Lock</button>${window.top!==window?`<button class="lock" data-act="exit">Exit</button>`:""}</div>`}<main>${inner}</main>
   <div class="ban" id="ban" data-act="openban" ${cv?"hidden":""}><div class="num" id="bn">000</div><div style="flex:1"><b id="bt">New list</b><small id="bs"></small></div></div>`;
 }
+let SQ=null,SQT=0;
+async function loadSQ(){
+  if(!A.token||A.locked||(SQ&&Date.now()-SQT<240000))return;
+  try{const{r,j}=await api("/api/find-stock");if(r.ok&&j.ok){SQ=j.stock;SQT=Date.now();if(A.tab=="inbox"&&!A.locked)refresh()}}catch(e){}
+}
+function stk(sku){
+  if(!SQ||!sku)return"";
+  const k=String(sku).toUpperCase(),o=SQ[k]||SQ[k.split("-")[0]]||{};
+  const e=Object.entries(o).filter(x=>x[1]>0).sort((a,b)=>(a[0]==A.store?-1:b[0]==A.store?1:0));
+  if(!e.length)return `<small style="display:block;color:#b3445a">Not in stock in any store</small>`;
+  return `<small style="display:block">In stock: ${e.map(x=>x[0]==A.store?`<b style="color:var(--ok)">${esc(x[0])} ${Math.round(x[1])}</b>`:`${esc(x[0])} ${Math.round(x[1])}`).join(" · ")}</small>`;
+}
 function detailHTML(o){
   if(!o)return `<div class="empty">Pick a list to see the pieces.</div>`;
   const tel=o.phone, fn=String(o.name||"").trim().split(/\s+/)[0]||"there";
   const wa="https://wa.me/2"+o.phone+"?text="+encodeURIComponent(`Hi ${fn} \ud83d\udc96 your Pandora order is ready for pick up at the store. See you soon!`);
-  const items=o.items.map(x=>`<div class="it"><div class="im">${x.im?`<img src="${B+esc(x.im)}${x.im.includes("?")?"&":"?"}width=240" alt="" onerror="this.remove()">`:""}</div><div class="t"><b>${esc(x.n)}</b><small>${x.s&&!/^one size$/i.test(x.s)?esc(x.s)+" · ":""}SKU ${esc(x.sku||"")}</small></div><div class="qn">× ${x.q}</div><div class="pr">${fmt(x.p*x.q)}</div></div>`).join("");
+  const items=o.items.map(x=>`<div class="it"><div class="im">${x.im?`<img src="${B+esc(x.im)}${x.im.includes("?")?"&":"?"}width=240" alt="" onerror="this.remove()">`:""}</div><div class="t"><b>${esc(x.n)}</b><small>${x.s&&!/^one size$/i.test(x.s)?esc(x.s)+" · ":""}SKU ${esc(x.sku||"")}</small>${stk(x.sku)}</div><div class="qn">× ${x.q}</div><div class="pr">${fmt(x.p*x.q)}</div></div>`).join("");
   const isDone=o.status=="done";
   const acts=isDone?"":o.status=="new"?`<button class="btn p" data-act="serve" data-id="${esc(o.id)}">Start serving</button><button class="btn o" data-act="done" data-id="${esc(o.id)}">Mark done</button>`:`<button class="btn" data-act="done" data-id="${esc(o.id)}">Mark done</button>`;
   return `<div class="dh"><div class="num">${esc(o.number)}</div><div><h1>${esc(o.name)}</h1><div class="meta">${isDone?`Sent ${dwhen(o.at)} · Done ${dwhen(o.doneAt||o.at)}`:`Sent ${clock(o.at)} · ${ago(o.at)}`} · ${o.itemCount} piece${o.itemCount==1?"":"s"}</div></div></div>
@@ -279,7 +291,7 @@ async function login(){
       A.err=j.error||"Could not check the PIN.";A.pin="";A.busy=false;return A.token?refreshPin():render()}
     const changed=A.store!==j.store;
     A.token=j.token;A.store=j.store;A.locked=false;A.pin="";A.err="";A.busy=false;A.lastTouch=Date.now();persist();savePin(typed);A.offered=false;
-    A.v=null;
+    A.v=null;loadSQ();
     if(changed){A.known=null;A.orders=[];A.sel=null;A.unseen.clear();A.menuFor=j.store}
     if(!A.menuFor)A.menuFor=j.store;
     A.unseen.clear();
@@ -344,12 +356,12 @@ setInterval(()=>{
   if(A.token&&!A.locked&&Date.now()-lastSave>60000)persist();
   if(A.token&&!A.locked&&A.tab=="inbox"){const q=$("ql");if(q)q.innerHTML=listHTML()}
 },30000);
-setInterval(poll,POLL);
+setInterval(poll,POLL);setInterval(loadSQ,300000);
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)poll()});
 
 /* shared logo path, defined once */
 document.body.insertAdjacentHTML("afterbegin",`<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><g id="lg" fill="currentColor"><path d="M462 60l12-5 129 295-82 20zM676 347L708 0h14l34 347zM968 60l-12-5-128 295 82 20z"/><circle cx="581" cy="452" r="47"/><circle cx="715" cy="440" r="47"/><circle cx="848" cy="452" r="47"/><path fill-rule="evenodd" d="M716 565a716 720 0 1 0 .1 0zM717 794a462 489 0 1 1-.1 0z"/></g></defs></svg>`);
-render();if(A.token)poll();
+render();if(A.token){poll();loadSQ()}
 </script>
 </body>
 </html>
