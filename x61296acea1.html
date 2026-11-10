@@ -102,6 +102,13 @@ let A={token:null,store:null,tab:"inbox",locked:true,orders:[],sel:null,known:nu
 const cur=()=>A.view=="done"?A.done:A.orders;
 const SK="pm-staff";let lastSave=0;
 function persist(){try{if(!A.token){localStorage.removeItem(SK);return}localStorage.setItem(SK,JSON.stringify({t:A.token,s:A.store,m:A.menuFor,l:A.locked,a:A.lastTouch}));lastSave=Date.now()}catch(e){}}
+A.offered=false;
+function savePin(pin){try{if(window.PasswordCredential&&pin&&pin.length>=4)navigator.credentials.store(new PasswordCredential({id:"pandora-staff",name:"Pandora staff",password:pin})).catch(()=>{})}catch(e){}}
+async function offerSaved(){
+  if(!window.PasswordCredential||!navigator.credentials||A.finder||A.busy)return;
+  try{const c=await navigator.credentials.get({password:true,mediation:"required"});
+    if(c&&c.password&&!A.busy&&(!A.token||A.locked)){A.pin=String(c.password).replace(/\D/g,"").slice(0,12);const pw=$("pw");if(pw)pw.value=A.pin;login()}}catch(e){}
+}
 try{const z=JSON.parse(localStorage.getItem(SK)||"null");if(z&&z.t){A.token=z.t;A.store=z.s;A.menuFor=z.m||z.s;A.locked=!!z.l||Date.now()-(z.a||0)>LOCK_AFTER;A.lastTouch=Date.now()}}catch(e){}
 
 const LOGO=h=>`<svg width="${Math.round(h*1433/2005)}" height="${h}" viewBox="0 0 1433 2005" aria-hidden="true"><use href="#lg"/></svg>`;
@@ -126,7 +133,7 @@ function clock(t){return new Date(t).toLocaleTimeString("en-GB",{hour:"2-digit",
 function pinView(title,sub){
   const d=[0,1,2,3,4,5].map(i=>`<i class="${i<A.pin.length?"f":""}"></i>`).join("");
   const k=n=>`<button data-k="${n}">${n}</button>`;
-  return `<div class="pin"><div style="color:var(--ink)">${LOGO(70)}</div><h1>${title}</h1><div class="meta">${sub}</div><div class="dots">${d}</div><div class="err" id="perr">${esc(A.err)}</div><form id="pf" autocomplete="on" style="display:flex;gap:8px;align-items:center;justify-content:center"><input type="text" name="username" autocomplete="username" value="pandora-staff" tabindex="-1" aria-hidden="true" style="position:absolute;opacity:0;width:1px;height:1px;pointer-events:none"><input id="pw" type="password" name="password" autocomplete="current-password" inputmode="numeric" placeholder="PIN" aria-label="PIN" value="${esc(A.pin)}" style="width:150px;text-align:center;border:1px solid var(--line);border-radius:99px;padding:8px 14px;background:var(--card);font:inherit;color:var(--ink)"><button type="submit" style="font-size:13px;color:var(--pinkd);padding:8px 10px">Sign in</button></form><div class="keys">${[1,2,3,4,5,6,7,8,9].map(k).join("")}<button data-k="del" aria-label="Delete">⌫</button>${k(0)}<button data-k="go" class="go" aria-label="Enter">→</button></div>${window.top!==window&&!A.token?`<button data-act="exit" style="color:var(--mute);font-size:14px;padding:10px 18px;margin-top:4px">Cancel</button>`:""}</div>`;
+  return `<div class="pin"><div style="color:var(--ink)">${LOGO(70)}</div><h1>${title}</h1><div class="meta">${sub}</div><div class="dots">${d}</div><div class="err" id="perr">${esc(A.err)}</div><form id="pf" autocomplete="on" style="display:flex;gap:8px;align-items:center;justify-content:center"><input type="text" name="username" autocomplete="username" value="pandora-staff" tabindex="-1" aria-hidden="true" style="position:absolute;opacity:0;width:1px;height:1px;pointer-events:none"><input id="pw" type="password" name="password" autocomplete="current-password" inputmode="numeric" placeholder="PIN" aria-label="PIN" value="${esc(A.pin)}" style="width:150px;text-align:center;border:1px solid var(--line);border-radius:99px;padding:8px 14px;background:var(--card);font:inherit;color:var(--ink)"><button type="submit" style="font-size:13px;color:var(--pinkd);padding:8px 10px">Sign in</button></form><button type="button" data-act="saved" style="font-size:13px;color:var(--mute)">Use saved PIN</button><div class="keys">${[1,2,3,4,5,6,7,8,9].map(k).join("")}<button data-k="del" aria-label="Delete">⌫</button>${k(0)}<button data-k="go" class="go" aria-label="Enter">→</button></div>${window.top!==window&&!A.token?`<button data-act="exit" style="color:var(--mute);font-size:14px;padding:10px 18px;margin-top:4px">Cancel</button>`:""}</div>`;
 }
 function shell(inner){
   const nNew=A.unseen.size;
@@ -171,10 +178,11 @@ function finderView(){
 function render(){
   const r=$("root");
   if(A.finder){r.innerHTML=finderView();return}
-  if(!A.token){r.innerHTML=pinView("Staff sign-in","Enter your store PIN");return}
+  if(!A.token){r.innerHTML=pinView("Staff sign-in","Enter your store PIN");if(!A.offered){A.offered=true;offerSaved()}return}
   const menu=`<iframe id="mf" title="Menu" src="${A.menuFor?`/?store=${encodeURIComponent(A.menuFor)}`:"about:blank"}" ${A.tab=="menu"?"":"hidden"}></iframe>`;
   r.innerHTML=shell(menu+`<div class="pane" id="ib" ${A.tab=="inbox"?"":"hidden"}>${inboxView()}</div>`);
   document.title=(A.unseen.size?`(${A.unseen.size}) `:"")+"Pandora staff";
+  if(A.locked&&A.tab=="inbox"&&!A.offered){A.offered=true;offerSaved()}
 }
 /* partial refresh so the menu iframe never reloads while polling */
 function refresh(){
@@ -258,7 +266,7 @@ function setView(v){
 }
 async function login(){
   if(A.busy||A.pin.length<4)return;
-  A.busy=true;A.err="";
+  const typed=A.pin;A.busy=true;A.err="";
   try{
     const{r,j}=await api("/api/staff-login",{method:"POST",body:JSON.stringify({pin:A.pin})});
     if(!r.ok||!j.ok){
@@ -268,7 +276,7 @@ async function login(){
       }
       A.err=j.error||"Could not check the PIN.";A.pin="";A.busy=false;return A.token?refreshPin():render()}
     const changed=A.store!==j.store;
-    A.token=j.token;A.store=j.store;A.locked=false;A.pin="";A.err="";A.busy=false;A.lastTouch=Date.now();persist();
+    A.token=j.token;A.store=j.store;A.locked=false;A.pin="";A.err="";A.busy=false;A.lastTouch=Date.now();persist();savePin(typed);A.offered=false;
     A.v=null;
     if(changed){A.known=null;A.orders=[];A.sel=null;A.unseen.clear();A.menuFor=j.store}
     if(!A.menuFor)A.menuFor=j.store;
@@ -305,7 +313,8 @@ document.addEventListener("click",e=>{
   if(act){const a=act.dataset.act;
     if(a=="fclose"){A.finder=false;A.ftok=null;A.fstock=null;A.pin="";A.err="";try{parent.postMessage({pm:"exit"},location.origin)}catch(e){}render()}
     else if(a=="exit"){try{parent.postMessage({pm:"exit"},location.origin)}catch(e){}}
-    else if(a=="lock"){A.locked=true;persist();A.pin="";A.err="";A.sel=null;A.view="waiting";A.done=[];render()}
+    else if(a=="saved"){offerSaved()}
+    else if(a=="lock"){A.locked=true;A.offered=false;persist();A.pin="";A.err="";A.sel=null;A.view="waiting";A.done=[];render()}
     else if(a=="serve")setStatus(act.dataset.id,"serving");
     else if(a=="done")setStatus(act.dataset.id,"done");
     else if(a=="openban"){$("ban").classList.remove("show");A.tab="inbox";A.pin="";render()}
@@ -327,7 +336,7 @@ document.addEventListener("input",e=>{if(!e.target||e.target.id!="pw")return;A.p
 ["pointerdown","keydown","touchstart"].forEach(t=>document.addEventListener(t,()=>{A.lastTouch=Date.now()},{passive:true}));
 /* touches inside the menu iframe do not reach this page, so poll the iframe's activity through focus + a gentle timer */
 setInterval(()=>{
-  if(A.token&&!A.locked&&Date.now()-A.lastTouch>LOCK_AFTER&&A.tab=="inbox"){A.locked=true;persist();A.sel=null;A.pin="";A.view="waiting";A.done=[];render()}
+  if(A.token&&!A.locked&&Date.now()-A.lastTouch>LOCK_AFTER&&A.tab=="inbox"){A.locked=true;A.offered=false;persist();A.sel=null;A.pin="";A.view="waiting";A.done=[];render()}
   if(A.token&&!A.locked&&Date.now()-lastSave>60000)persist();
   if(A.token&&!A.locked&&A.tab=="inbox"){const q=$("ql");if(q)q.innerHTML=listHTML()}
 },30000);
