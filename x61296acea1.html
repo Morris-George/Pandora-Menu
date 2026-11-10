@@ -140,6 +140,7 @@ function shell(inner){
   return `${cv?"":`<div class="bar"><div class="brand"><span style="color:var(--ink)">${LOGO(26)}</span>PANDORA</div><div class="store">${esc(A.store)}</div>
   ${A.offline?`<span class="net">Offline, retrying…</span>`:""}
   <button class="tab ${A.tab=="inbox"?"on":""}" data-tab="inbox">Inbox<span class="bdg" ${nNew?"":"hidden"}>${nNew}</span></button>
+  <button class="tab ${A.tab=="stock"?"on":""}" data-tab="stock">Stock</button>
   <button class="lock" data-act="cust">Customer view</button><button class="lock" data-act="lock">Lock</button>${window.top!==window?`<button class="lock" data-act="exit">Exit</button>`:""}</div>`}<main>${inner}</main>
   <div class="ban" id="ban" data-act="openban" ${cv?"hidden":""}><div class="num" id="bn">000</div><div style="flex:1"><b id="bt">New list</b><small id="bs"></small></div></div>`;
 }
@@ -179,9 +180,11 @@ function render(){
   if(A.finder){r.innerHTML=finderView();return}
   if(!A.token){r.innerHTML=pinView("Staff sign-in","Enter your store PIN");if(!A.offered){A.offered=true;offerSaved()}return}
   const menu=A.tab=="menu"&&window.top===window?`<iframe id="mf" title="Menu" src="/?store=${encodeURIComponent(A.menuFor||A.store||"")}"></iframe><button class="lock" data-act="staff" style="position:fixed;right:10px;bottom:10px;z-index:5;background:#fff;opacity:.6">Staff view</button>`:"";
-  r.innerHTML=shell(menu+`<div class="pane" id="ib" ${A.tab=="inbox"?"":"hidden"}>${inboxView()}</div>`);
+  A.ftok=A.token;
+  const stk=A.tab=="stock"?`<div class="pane" id="sk">${A.locked?pinView("Stock is locked","Enter your store PIN to check stock in every store"):`<iframe id="fm" title="Stock in all stores" src="/?find=1"></iframe>`}</div>`:"";
+  r.innerHTML=shell(menu+stk+`<div class="pane" id="ib" ${A.tab=="inbox"?"":"hidden"}>${inboxView()}</div>`);
   document.title=(A.unseen.size?`(${A.unseen.size}) `:"")+"Pandora staff";
-  if(A.locked&&A.tab=="inbox"&&!A.offered){A.offered=true;offerSaved()}
+  if(A.locked&&(A.tab=="inbox"||A.tab=="stock")&&!A.offered){A.offered=true;offerSaved()}
 }
 /* partial refresh so the menu iframe never reloads while polling */
 function refresh(){
@@ -327,7 +330,7 @@ document.addEventListener("change",e=>{
 document.addEventListener("keydown",e=>{
   if(A.finder)return;
   if(e.target&&e.target.id=="pw")return;
-  if(A.token&&!(A.locked&&A.tab=="inbox"))return;
+  if(A.token&&!(A.locked&&(A.tab=="inbox"||A.tab=="stock")))return;
   if(/^\d$/.test(e.key)&&A.pin.length<6){A.pin+=e.key;A.err="";const d=document.querySelectorAll(".dots i");d.forEach((x,i)=>x.classList.toggle("f",i<A.pin.length));if(A.pin.length==6)login()}
   else if(e.key=="Backspace"){A.pin=A.pin.slice(0,-1);const d=document.querySelectorAll(".dots i");d.forEach((x,i)=>x.classList.toggle("f",i<A.pin.length))}
   else if(e.key=="Enter")login();
