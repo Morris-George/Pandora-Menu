@@ -489,7 +489,12 @@ function V(){const a=S.scr;
  if(a=="send")return`<div class="fade nar">${tp("Back to my list","list")}<h1>${t("Almost there")}</h1><div class="sub">${tt("Tell us who to look for. Our team"+(S.store?" at "+esc(S.store):"")+" will get your list and bring the pieces to you.","أخبرنا باسمك. سيستلم فريقنا"+(S.store?" في "+esc(t(S.store)):"")+" قائمتك ويحضر لك القطع.")}</div><div class="lab">${t("Your name")}</div><input class="fld" id="fn" type="text" autocomplete="name" maxlength="60" placeholder="${t("Your name")}" value="${esc(S.fn||"")}"><div class="lab">${t("Mobile number")}</div><input class="fld" id="fp" type="tel" inputmode="tel" autocomplete="tel" maxlength="20" placeholder="01X XXXX XXXX" value="${esc(S.fp||"")}"><div class="fine">${t("We only use your number for this list and delete it after 30 days.")}</div>${S.err?`<div class="ferr">${esc(t(S.err))}</div>`:""}<button class="btn p" data-a="submit" style="margin-top:20px" ${S.busy?"disabled":""}>${S.busy?t("Sending…"):t("Send my list")}</button></div>`;
  if(a=="sent"){const s=S.sent||{};return`<div class="fade nar" style="text-align:center;align-items:center"><div class="mute" style="font-size:11px;letter-spacing:.14em">${t("YOUR ORDER NUMBER")}</div><div class="onum">${esc(s.num||"")}</div><h1 style="font-size:30px;margin:0 0 10px">${tt("Thank you"+(s.name?", "+esc(String(s.name).split(" ")[0]):""),"شكرًا لك"+(s.name?"، "+esc(String(s.name).split(" ")[0]):""))}</h1><div class="sub">${t("A team member will be with you shortly.")}<br>${tt("Your list was sent to "+esc(s.store||"")+".","تم إرسال قائمتك إلى "+esc(t(s.store||""))+".")}</div><button class="btn" data-a="start" style="margin-top:22px">${t("Done")}</button></div>`}}
 let SEND=false;fetch("/api/ready",{cache:"no-store"}).then(r=>r.json()).then(j=>{if(j&&j.ready){SEND=true;if(typeof S!="undefined"&&S.scr=="list")R()}}).catch(()=>{});let LS=null;$("hdr").innerHTML=`${LOGO(34)}<span>PANDORA</span>`;function R(){const ch=LS!==S.scr,y=window.scrollY;LS=S.scr;const ap=$("app");ap.classList.toggle("na",!ch);ap.innerHTML=V();$("hdr").hidden=S.scr=="welcome";window.scrollTo(0,ch?0:y)}document.addEventListener("click",e=>{if(S.scr=="welcome"&&!e.target.closest("[data-a]"))go(S.store?"cats":"store")});
-const go=s=>{S.scr=s;S.am=false;R()};
+const HK=["scr","cat","lux","form","step","q","pid","size","dback","srch","view","fx","n","from","skip"];
+const snap=()=>{const o={};HK.forEach(k=>o[k]=S[k]);return JSON.parse(JSON.stringify(o))};
+let HP=0;const pushH=f=>{try{const sc=!f&&S.scr==(history.state&&history.state.scr);history[sc&&HP?"replaceState":"pushState"](snap(),"");HP=1}catch(e){}};
+window.addEventListener("popstate",e=>{const o=e.state;if(!o||!o.scr)return;HK.forEach(k=>{if(k in o)S[k]=o[k]});S.am=false;R()});
+try{history.replaceState(snap(),"");HP=1}catch(e){}
+const go=s=>{S.scr=s;S.am=false;pushH();R()};
 $("app").addEventListener("click",e=>{const b=e.target.closest("[data-a]");if(!b)return;const a=b.dataset.a,v=b.dataset.v;
  if(a=="start"){if(KIOSK&&LANG!="en")setLang("en");S.srch="";S.store=KIOSK||(FIND?"All stores":null);loadStock(KIOSK);S.sent=null;S.err="";S.cid=null;S.fn="";S.fp="";S.list={};S.ref=null;save();S.q={who:null,mat:null,occ:[],style:null,bud:null};S.cat=null;S.lux=false;S.form=null;S.skip=false;S.n=8;S.view="grid";go("welcome")}
  else if(a=="cats")go("cats");
@@ -499,8 +504,8 @@ $("app").addEventListener("click",e=>{const b=e.target.closest("[data-a]");if(!b
  else if(a=="cat"){S.srch="";S.lux=v=="lux";S.cat=(v=="all"||v=="lux")?null:+v;S.step=0;S.q={who:null,mat:null,occ:[],style:null,bud:null};S.skip=false;S.form=null;S.n=8;go("finder")}
  else if(a=="finder")go("finder");
  else if(a=="pick"){const q=S.q,k=FS()[S.step];if(k=="who")q.who=v;else if(k=="mat")q.mat=v;else if(k=="occ"){if(v=="none")q.occ=["none"];else{q.occ=q.occ.filter(x=>x!="none");q.occ=q.occ.includes(v)?q.occ.filter(x=>x!=v):[...q.occ,v]}}else if(k=="style")q.style=v;else q.bud=v;R()}
- else if(a=="next"){if(S.step<FS().length-1){S.step++;R()}else{S.skip=false;S.n=8;S.form=null;S.fx=0;go("results")}}
- else if(a=="back"){if(S.step>0){S.step--;R()}else go("cats")}
+ else if(a=="next"){if(S.step<FS().length-1){S.step++;pushH(1);R()}else{S.skip=false;S.n=8;S.form=null;S.fx=0;go("results")}}
+ else if(a=="back"){if(S.step>0){history.back()}else go("cats")}
  else if(a=="skip"){S.fx=0;S.skip=true;S.n=8;S.form=null;go("results")}
  else if(a=="form"){S.form=v||(S.cat!=null?null:null);S.n=8;R()}
  else if(a=="more"){S.n+=8;R()}
