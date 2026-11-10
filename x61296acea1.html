@@ -144,6 +144,7 @@ function shell(inner){
   <button class="lock" data-act="cust">Customer view</button><button class="lock" data-act="lock">Lock</button>${window.top!==window?`<button class="lock" data-act="exit">Exit</button>`:""}</div>`}<main>${inner}</main>
   <div class="ban" id="ban" data-act="openban" ${cv?"hidden":""}><div class="num" id="bn">000</div><div style="flex:1"><b id="bt">New list</b><small id="bs"></small></div></div>`;
 }
+const STORES=["CFC","Point 90","City Centre Almaza","City Stars","Mall Of Egypt","Mall Of Arabia","CC Alexandria"];
 let SQ=null,SQT=0;
 async function loadSQ(){
   if(!A.token||A.locked||(SQ&&Date.now()-SQT<240000))return;
@@ -191,7 +192,7 @@ function render(){
   const r=$("root");
   if(A.finder){r.innerHTML=finderView();return}
   if(!A.token){r.innerHTML=pinView("Staff sign-in","Enter your store PIN");if(!A.offered){A.offered=true;offerSaved()}return}
-  const menu=A.tab=="menu"&&window.top===window?`<iframe id="mf" title="Menu" src="/?store=${encodeURIComponent(A.menuFor||A.store||"")}${A.qty?"&qty=1":""}"></iframe><div style="position:fixed;right:10px;bottom:10px;z-index:5;display:flex;gap:8px"><button class="lock" data-act="qty" style="background:#fff;opacity:.6">${A.qty?"Hide qty":"Show qty"}</button><button class="lock" data-act="staff" style="background:#fff;opacity:.6">Staff view</button></div>`:"";
+  const menu=A.tab=="menu"&&window.top===window?`<iframe id="mf" title="Menu" src="/?store=${encodeURIComponent((A.qty&&A.qs)||A.menuFor||A.store||"")}${A.qty?"&qty=1":""}"></iframe><div style="position:fixed;right:10px;bottom:10px;z-index:5;display:flex;gap:8px;align-items:center">${A.qty?`<select id="qs" aria-label="Store" style="padding:10px 12px;border:1px solid var(--line);border-radius:99px;background:#fff;color:var(--ink);font:inherit;font-size:13px">${STORES.map(n=>`<option ${n==((A.qs)||A.menuFor||A.store)?"selected":""}>${esc(n)}</option>`).join("")}</select>`:""}<button class="lock" data-act="qty" style="background:#fff;opacity:.6">${A.qty?"Hide qty":"Show qty"}</button><button class="lock" data-act="staff" style="background:#fff;opacity:.6">Staff view</button></div>`:"";
   A.ftok=A.token;
   const stk=A.tab=="stock"?`<div class="pane" id="sk">${A.locked?pinView("Stock is locked","Enter your store PIN to check stock in every store"):`<iframe id="fm" title="Stock in all stores" src="/?find=1"></iframe>`}</div>`:"";
   r.innerHTML=shell(menu+stk+`<div class="pane" id="ib" ${A.tab=="inbox"?"":"hidden"}>${inboxView()}</div>`);
@@ -328,9 +329,9 @@ document.addEventListener("click",e=>{
     if(a=="fclose"){A.finder=false;A.ftok=null;A.fstock=null;A.pin="";A.err="";try{parent.postMessage({pm:"exit"},location.origin)}catch(e){}render()}
     else if(a=="exit"){try{parent.postMessage({pm:"exit"},location.origin)}catch(e){}}
     else if(a=="saved"){offerSaved()}
-    else if(a=="qty"){if(A.qty){A.qty=false;render()}else{A.wantQty=true;A.tab="inbox";A.locked=true;A.pin="";A.offered=false;persist();render()}}
-    else if(a=="cust"){A.qty=false;A.tab="menu";A.locked=true;A.sel=null;A.pin="";A.view="waiting";A.done=[];A.offered=false;persist();render()}
-    else if(a=="staff"){A.qty=false;A.wantQty=false;A.tab="inbox";A.locked=true;A.pin="";A.offered=false;persist();render()}
+    else if(a=="qty"){if(A.qty){A.qty=false;A.qs=null;render()}else{A.wantQty=true;A.tab="inbox";A.locked=true;A.pin="";A.offered=false;persist();render()}}
+    else if(a=="cust"){A.qty=false;A.qs=null;A.tab="menu";A.locked=true;A.sel=null;A.pin="";A.view="waiting";A.done=[];A.offered=false;persist();render()}
+    else if(a=="staff"){A.qty=false;A.qs=null;A.wantQty=false;A.tab="inbox";A.locked=true;A.pin="";A.offered=false;persist();render()}
     else if(a=="lock"){A.locked=true;A.offered=false;persist();A.pin="";A.err="";A.sel=null;A.view="waiting";A.done=[];render()}
     else if(a=="serve")setStatus(act.dataset.id,"serving");
     else if(a=="done")setStatus(act.dataset.id,"done");
@@ -338,6 +339,7 @@ document.addEventListener("click",e=>{
   }
 });
 document.addEventListener("change",e=>{
+  if(e.target&&e.target.id=="qs"){A.qs=e.target.value;render();return}
   if(e.target&&e.target.id=="dday"&&e.target.value){A.range="day";A.day=e.target.value;A.sel=null;A.done=[];const ib=$("ib");if(ib)ib.innerHTML=inboxView();loadDone()}
 });
 document.addEventListener("keydown",e=>{
