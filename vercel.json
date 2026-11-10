@@ -2,6 +2,16 @@
   "cleanUrls": true,
   "rewrites": [
     {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "pandora-orders.vercel.app"
+        }
+      ],
+      "destination": "/x61296acea1"
+    },
+    {
       "source": "/staff",
       "destination": "/"
     },
@@ -43,6 +53,29 @@
     },
     {
       "source": "/orders",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store"
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "no-referrer"
+        }
+      ]
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "pandora-orders.vercel.app"
+        }
+      ],
       "headers": [
         {
           "key": "Cache-Control",
