@@ -139,7 +139,6 @@ function shell(inner){
   const nNew=A.unseen.size;
   return `<div class="bar"><div class="brand"><span style="color:var(--ink)">${LOGO(26)}</span>PANDORA</div><div class="store">${esc(A.store)}</div>
   ${A.offline?`<span class="net">Offline, retrying…</span>`:""}
-  <button class="tab ${A.tab=="menu"?"on":""}" data-tab="menu">Menu</button>
   <button class="tab ${A.tab=="inbox"?"on":""}" data-tab="inbox">Inbox<span class="bdg" ${nNew?"":"hidden"}>${nNew}</span></button>
   <button class="lock" data-act="lock">Lock</button>${window.top!==window?`<button class="lock" data-act="exit">Exit</button>`:""}</div><main>${inner}</main>
   <div class="ban" id="ban" data-act="openban"><div class="num" id="bn">000</div><div style="flex:1"><b id="bt">New list</b><small id="bs"></small></div></div>`;
@@ -179,7 +178,7 @@ function render(){
   const r=$("root");
   if(A.finder){r.innerHTML=finderView();return}
   if(!A.token){r.innerHTML=pinView("Staff sign-in","Enter your store PIN");if(!A.offered){A.offered=true;offerSaved()}return}
-  const menu=`<iframe id="mf" title="Menu" src="${A.menuFor?`/?store=${encodeURIComponent(A.menuFor)}`:"about:blank"}" ${A.tab=="menu"?"":"hidden"}></iframe>`;
+  const menu="";
   r.innerHTML=shell(menu+`<div class="pane" id="ib" ${A.tab=="inbox"?"":"hidden"}>${inboxView()}</div>`);
   document.title=(A.unseen.size?`(${A.unseen.size}) `:"")+"Pandora staff";
   if(A.locked&&A.tab=="inbox"&&!A.offered){A.offered=true;offerSaved()}
