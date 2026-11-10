@@ -137,7 +137,7 @@ function shell(inner){
 function detailHTML(o){
   if(!o)return `<div class="empty">Pick a list to see the pieces.</div>`;
   const tel=o.phone, fn=String(o.name||"").trim().split(/\s+/)[0]||"there";
-  const wa="https://wa.me/2"+o.phone+"?text="+encodeURIComponent(`Hello ${fn}! \u2728 Your Pandora order is ready and waiting for you at the store. Come and pick up your sparkle! \ud83d\udc96`);
+  const wa="https://wa.me/2"+o.phone+"?text="+encodeURIComponent(`Hi ${fn} \ud83d\udc96 your Pandora order is ready for pick up at the store. See you soon!`);
   const items=o.items.map(x=>`<div class="it"><div class="im">${x.im?`<img src="${B+esc(x.im)}${x.im.includes("?")?"&":"?"}width=240" alt="" onerror="this.remove()">`:""}</div><div class="t"><b>${esc(x.n)}</b><small>${x.s&&!/^one size$/i.test(x.s)?esc(x.s)+" · ":""}SKU ${esc(x.sku||"")}</small></div><div class="qn">× ${x.q}</div><div class="pr">${fmt(x.p*x.q)}</div></div>`).join("");
   const isDone=o.status=="done";
   const acts=isDone?"":o.status=="new"?`<button class="btn p" data-act="serve" data-id="${esc(o.id)}">Start serving</button><button class="btn o" data-act="done" data-id="${esc(o.id)}">Mark done</button>`:`<button class="btn" data-act="done" data-id="${esc(o.id)}">Mark done</button>`;
