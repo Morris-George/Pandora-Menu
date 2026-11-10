@@ -109,7 +109,7 @@ async function offerSaved(){
   try{const c=await navigator.credentials.get({password:true,mediation:"required"});
     if(c&&c.password&&!A.busy&&(!A.token||A.locked)){A.pin=String(c.password).replace(/\D/g,"").slice(0,12);const pw=$("pw");if(pw)pw.value=A.pin;login()}}catch(e){}
 }
-try{const z=JSON.parse(localStorage.getItem(SK)||"null");if(z&&z.t){A.token=z.t;A.store=z.s;A.menuFor=z.m||z.s;A.tab=z.v||"inbox";A.locked=!!z.l||A.tab=="menu"||Date.now()-(z.a||0)>LOCK_AFTER;A.lastTouch=Date.now()}}catch(e){}
+try{const z=JSON.parse(localStorage.getItem(SK)||"null");if(z&&z.t){A.token=z.t;A.store=z.s;A.menuFor=z.m||z.s;A.tab=window.top!==window?"inbox":(z.v||"inbox");A.locked=!!z.l||A.tab=="menu"||Date.now()-(z.a||0)>LOCK_AFTER;A.lastTouch=Date.now()}}catch(e){}
 
 const LOGO=h=>`<svg width="${Math.round(h*1433/2005)}" height="${h}" viewBox="0 0 1433 2005" aria-hidden="true"><use href="#lg"/></svg>`;
 
@@ -136,7 +136,7 @@ function pinView(title,sub){
   return `<div class="pin"><div style="color:var(--ink)">${LOGO(70)}</div><h1>${title}</h1><div class="meta">${sub}</div><div class="dots">${d}</div><div class="err" id="perr">${esc(A.err)}</div><form id="pf" autocomplete="on" style="display:flex;gap:8px;align-items:center;justify-content:center"><input type="text" name="username" autocomplete="username" value="pandora-staff" tabindex="-1" aria-hidden="true" style="position:absolute;opacity:0;width:1px;height:1px;pointer-events:none"><input id="pw" type="password" name="password" autocomplete="current-password" inputmode="numeric" placeholder="PIN" aria-label="PIN" value="${esc(A.pin)}" style="width:150px;text-align:center;border:1px solid var(--line);border-radius:99px;padding:8px 14px;background:var(--card);font:inherit;color:var(--ink)"><button type="submit" style="font-size:13px;color:var(--pinkd);padding:8px 10px">Sign in</button></form><button type="button" data-act="saved" style="font-size:13px;color:var(--mute)">Use saved PIN</button><div class="keys">${[1,2,3,4,5,6,7,8,9].map(k).join("")}<button data-k="del" aria-label="Delete">⌫</button>${k(0)}<button data-k="go" class="go" aria-label="Enter">→</button></div>${window.top!==window&&!A.token?`<button data-act="exit" style="color:var(--mute);font-size:14px;padding:10px 18px;margin-top:4px">Cancel</button>`:""}</div>`;
 }
 function shell(inner){
-  const nNew=A.unseen.size,cv=A.tab=="menu";
+  const nNew=A.unseen.size,cv=A.tab=="menu"&&window.top===window;
   return `${cv?"":`<div class="bar"><div class="brand"><span style="color:var(--ink)">${LOGO(26)}</span>PANDORA</div><div class="store">${esc(A.store)}</div>
   ${A.offline?`<span class="net">Offline, retrying…</span>`:""}
   <button class="tab ${A.tab=="inbox"?"on":""}" data-tab="inbox">Inbox<span class="bdg" ${nNew?"":"hidden"}>${nNew}</span></button>
@@ -178,7 +178,7 @@ function render(){
   const r=$("root");
   if(A.finder){r.innerHTML=finderView();return}
   if(!A.token){r.innerHTML=pinView("Staff sign-in","Enter your store PIN");if(!A.offered){A.offered=true;offerSaved()}return}
-  const menu=A.tab=="menu"?`<iframe id="mf" title="Menu" src="/?store=${encodeURIComponent(A.menuFor||A.store||"")}"></iframe><button class="lock" data-act="staff" style="position:fixed;right:10px;bottom:10px;z-index:5;background:#fff;opacity:.6">Staff view</button>`:"";
+  const menu=A.tab=="menu"&&window.top===window?`<iframe id="mf" title="Menu" src="/?store=${encodeURIComponent(A.menuFor||A.store||"")}"></iframe><button class="lock" data-act="staff" style="position:fixed;right:10px;bottom:10px;z-index:5;background:#fff;opacity:.6">Staff view</button>`:"";
   r.innerHTML=shell(menu+`<div class="pane" id="ib" ${A.tab=="inbox"?"":"hidden"}>${inboxView()}</div>`);
   document.title=(A.unseen.size?`(${A.unseen.size}) `:"")+"Pandora staff";
   if(A.locked&&A.tab=="inbox"&&!A.offered){A.offered=true;offerSaved()}

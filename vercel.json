@@ -66,6 +66,11 @@
         {
           "type": "host",
           "value": "pandora-orders.vercel.app"
+        },
+        {
+          "type": "header",
+          "key": "sec-fetch-dest",
+          "value": "document"
         }
       ],
       "destination": "/orders",
