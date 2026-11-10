@@ -262,7 +262,7 @@ const occHit=(o,p)=>{const f=OCX[o];return f?f(p,occName(p)):false};
 const STY=[["classic","Classic & sparkling","Stones, pavé and clear sparkle",/classic stone|\bpav|sparkle|cluster|regal|tiara|halo|solitaire/],["romantic","Romantic","Hearts, love and soft touches",/\b(heart|love|infinity|kiss|rose(?! gold)|cupid|valentine)/],["nature","Nature & animals","Flowers, moon, butterflies and pets",/\b(nature|animals|butterfl|flower|moon|star|sun|cat|dog|bird|leaf|leaves|bee|ocean|celestial|paw)/],["playful","Playful & colourful","Enamel, Murano and colourful fun",/symbols and colours|marvel|enamel|murano|candy|wish and wave|world cup/],["pearl","Pearls & elegance","Soft pearls and timeless shapes",/pearl|timeless|signature|essence/],["disney","Disney collection","Characters, castles and magic",/disney/],["lux","Luxurious","The Essence collection",/\borganic\b/],["any","No particular style","Show me a bit of everything"]];
 const BUD=[["b0","Under EGP 2,500",0,2500],["b1","EGP 2,500 – 5,000",2500,5000],["b2","EGP 5,000 – 7,000",5000,7000],["b3","Over EGP 7,000",7000,1e9],["any","No limit"]];
 const NUM=["","One","Two","Three","Four","Five","Six","Seven","Eight"];
-let S={store:null,scr:"welcome",cat:null,step:0,q:{who:null,mat:null,occ:[],style:null,bud:null},skip:false,n:8,form:null,pid:null,size:null,list:{},ref:null,from:"results"};
+let S={store:null,scr:"welcome",cat:null,step:0,q:{who:null,mat:null,occ:[],style:null,bud:null},skip:false,n:8,form:null,pid:null,size:null,list:{},ref:null,from:"results",view:"grid"};
 try{const s=JSON.parse(localStorage.getItem("pdm")||"null");if(s){S.list=s.list||{};S.ref=s.ref}}catch(e){}
 const $=id=>document.getElementById(id),esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const fmt=n=>{const s=Math.round(n).toLocaleString("en-US");return LANG=="ar"?s+" جنيه":"EGP "+s};
@@ -491,7 +491,7 @@ function V(){const a=S.scr;
 let SEND=false;fetch("/api/ready",{cache:"no-store"}).then(r=>r.json()).then(j=>{if(j&&j.ready){SEND=true;if(typeof S!="undefined"&&S.scr=="list")R()}}).catch(()=>{});let LS=null;$("hdr").innerHTML=`${LOGO(34)}<span>PANDORA</span>`;function R(){const ch=LS!==S.scr,y=window.scrollY;LS=S.scr;const ap=$("app");ap.classList.toggle("na",!ch);ap.innerHTML=V();$("hdr").hidden=S.scr=="welcome";window.scrollTo(0,ch?0:y)}document.addEventListener("click",e=>{if(S.scr=="welcome"&&!e.target.closest("[data-a]"))go(S.store?"cats":"store")});
 const go=s=>{S.scr=s;S.am=false;R()};
 $("app").addEventListener("click",e=>{const b=e.target.closest("[data-a]");if(!b)return;const a=b.dataset.a,v=b.dataset.v;
- if(a=="start"){if(KIOSK&&LANG!="en")setLang("en");S.srch="";S.store=KIOSK||(FIND?"All stores":null);loadStock(KIOSK);S.sent=null;S.err="";S.cid=null;S.fn="";S.fp="";S.list={};S.ref=null;save();S.q={who:null,mat:null,occ:[],style:null,bud:null};S.cat=null;S.lux=false;S.form=null;S.skip=false;S.n=8;go("welcome")}
+ if(a=="start"){if(KIOSK&&LANG!="en")setLang("en");S.srch="";S.store=KIOSK||(FIND?"All stores":null);loadStock(KIOSK);S.sent=null;S.err="";S.cid=null;S.fn="";S.fp="";S.list={};S.ref=null;save();S.q={who:null,mat:null,occ:[],style:null,bud:null};S.cat=null;S.lux=false;S.form=null;S.skip=false;S.n=8;S.view="grid";go("welcome")}
  else if(a=="cats")go("cats");
  else if(a=="welcome")go("welcome");
  else if(a=="store"){S.store=v;loadStock(v);go("cats")}
