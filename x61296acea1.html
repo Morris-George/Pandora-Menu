@@ -100,6 +100,9 @@ const LOCK_AFTER=5*60*1000, POLL=15000;
 
 let A={token:null,store:null,tab:"inbox",locked:true,orders:[],sel:null,known:null,unseen:new Set(),fresh:new Set(),pin:"",err:"",busy:false,offline:false,lastTouch:Date.now(),menuFor:null,finder:false,ftok:null,fstock:null,view:"waiting",done:[],doneBusy:false,range:"today",day:""};
 const cur=()=>A.view=="done"?A.done:A.orders;
+const SK="pm-staff";let lastSave=0;
+function persist(){try{if(!A.token){localStorage.removeItem(SK);return}localStorage.setItem(SK,JSON.stringify({t:A.token,s:A.store,m:A.menuFor,l:A.locked,a:A.lastTouch}));lastSave=Date.now()}catch(e){}}
+try{const z=JSON.parse(localStorage.getItem(SK)||"null");if(z&&z.t){A.token=z.t;A.store=z.s;A.menuFor=z.m||z.s;A.locked=!!z.l||Date.now()-(z.a||0)>LOCK_AFTER;A.lastTouch=Date.now()}}catch(e){}
 
 const LOGO=h=>`<svg width="${Math.round(h*1433/2005)}" height="${h}" viewBox="0 0 1433 2005" aria-hidden="true"><use href="#lg"/></svg>`;
 
@@ -123,7 +126,7 @@ function clock(t){return new Date(t).toLocaleTimeString("en-GB",{hour:"2-digit",
 function pinView(title,sub){
   const d=[0,1,2,3,4,5].map(i=>`<i class="${i<A.pin.length?"f":""}"></i>`).join("");
   const k=n=>`<button data-k="${n}">${n}</button>`;
-  return `<div class="pin"><div style="color:var(--ink)">${LOGO(70)}</div><h1>${title}</h1><div class="meta">${sub}</div><div class="dots">${d}</div><div class="err" id="perr">${esc(A.err)}</div><div class="keys">${[1,2,3,4,5,6,7,8,9].map(k).join("")}<button data-k="del" aria-label="Delete">⌫</button>${k(0)}<button data-k="go" class="go" aria-label="Enter">→</button></div>${window.top!==window&&!A.token?`<button data-act="exit" style="color:var(--mute);font-size:14px;padding:10px 18px;margin-top:4px">Cancel</button>`:""}</div>`;
+  return `<div class="pin"><div style="color:var(--ink)">${LOGO(70)}</div><h1>${title}</h1><div class="meta">${sub}</div><div class="dots">${d}</div><div class="err" id="perr">${esc(A.err)}</div><form id="pf" autocomplete="on" style="display:flex;gap:8px;align-items:center;justify-content:center"><input type="text" name="username" autocomplete="username" value="pandora-staff" tabindex="-1" aria-hidden="true" style="position:absolute;opacity:0;width:1px;height:1px;pointer-events:none"><input id="pw" type="password" name="password" autocomplete="current-password" inputmode="numeric" placeholder="PIN" aria-label="PIN" value="${esc(A.pin)}" style="width:150px;text-align:center;border:1px solid var(--line);border-radius:99px;padding:8px 14px;background:var(--card);font:inherit;color:var(--ink)"><button type="submit" style="font-size:13px;color:var(--pinkd);padding:8px 10px">Sign in</button></form><div class="keys">${[1,2,3,4,5,6,7,8,9].map(k).join("")}<button data-k="del" aria-label="Delete">⌫</button>${k(0)}<button data-k="go" class="go" aria-label="Enter">→</button></div>${window.top!==window&&!A.token?`<button data-act="exit" style="color:var(--mute);font-size:14px;padding:10px 18px;margin-top:4px">Cancel</button>`:""}</div>`;
 }
 function shell(inner){
   const nNew=A.unseen.size;
@@ -209,7 +212,7 @@ async function poll(){
   if(!A.token||document.hidden)return;
   try{
     const{r,j}=await api("/api/inbox?v="+encodeURIComponent(A.v||""));
-    if(r.status==401){A.token=null;A.store=null;A.known=null;A.v=null;A.pin="";A.err="Session ended. Enter your PIN again.";return render()}
+    if(r.status==401){A.token=null;persist();A.store=null;A.known=null;A.v=null;A.pin="";A.err="Session ended. Enter your PIN again.";return render()}
     if(!r.ok||!j.ok)throw 0;
     A.offline=false;
     if(j.unchanged){const off=document.querySelector(".net");if(off)off.remove();return}
@@ -238,7 +241,7 @@ async function loadDone(){
   A.doneBusy=true;
   try{
     const{r,j}=await api("/api/inbox?view=done"+rangeQS());
-    if(r.status==401){A.token=null;A.store=null;A.known=null;A.v=null;A.pin="";A.err="Session ended. Enter your PIN again.";return render()}
+    if(r.status==401){A.token=null;persist();A.store=null;A.known=null;A.v=null;A.pin="";A.err="Session ended. Enter your PIN again.";return render()}
     if(!r.ok||!j.ok)throw 0;
     A.done=j.orders;A.offline=false;
     if(A.sel&&!A.done.some(o=>o.id==A.sel))A.sel=null;
@@ -265,7 +268,7 @@ async function login(){
       }
       A.err=j.error||"Could not check the PIN.";A.pin="";A.busy=false;return A.token?refreshPin():render()}
     const changed=A.store!==j.store;
-    A.token=j.token;A.store=j.store;A.locked=false;A.pin="";A.err="";A.busy=false;A.lastTouch=Date.now();
+    A.token=j.token;A.store=j.store;A.locked=false;A.pin="";A.err="";A.busy=false;A.lastTouch=Date.now();persist();
     A.v=null;
     if(changed){A.known=null;A.orders=[];A.sel=null;A.unseen.clear();A.menuFor=j.store}
     if(!A.menuFor)A.menuFor=j.store;
@@ -276,7 +279,7 @@ async function login(){
 function refreshPin(){const ib=$("ib");if(ib)ib.innerHTML=inboxView();else render()}
 async function setStatus(id,status){
   const{r,j}=await api("/api/order-status",{method:"POST",body:JSON.stringify({id,status})});
-  if(r.status==401){A.token=null;return render()}
+  if(r.status==401){A.token=null;persist();return render()}
   if(status=="done"&&r.ok){A.done=[]}
   if(status=="done"){A.orders=A.orders.filter(o=>o.id!=id);A.sel=A.orders.length&&window.innerWidth>760?A.orders[0].id:null}
   else{const o=A.orders.find(o=>o.id==id);if(o&&r.ok)o.status="serving"}
@@ -288,7 +291,7 @@ document.addEventListener("click",e=>{
   A.lastTouch=Date.now();
   const k=e.target.closest("[data-k]");
   if(k){const v=k.dataset.k;if(v=="del")A.pin=A.pin.slice(0,-1);else if(v=="go"){login();return}else if(A.pin.length<6)A.pin+=v;A.err="";
-    const dots=document.querySelectorAll(".dots i");dots.forEach((d,i)=>d.classList.toggle("f",i<A.pin.length));const pe=$("perr");if(pe)pe.textContent="";
+    const dots=document.querySelectorAll(".dots i");dots.forEach((d,i)=>d.classList.toggle("f",i<A.pin.length));const pe=$("perr");if(pe)pe.textContent="";const pw=$("pw");if(pw)pw.value=A.pin;
     if(A.pin.length==6)login();return}
   const tab=e.target.closest("[data-tab]");
   if(tab){A.tab=tab.dataset.tab;if(A.tab=="inbox"&&!A.locked){A.unseen.clear();if(!A.sel&&A.orders.length&&window.innerWidth>760)A.sel=A.orders[0].id}A.pin="";A.err="";render();return}
@@ -302,7 +305,7 @@ document.addEventListener("click",e=>{
   if(act){const a=act.dataset.act;
     if(a=="fclose"){A.finder=false;A.ftok=null;A.fstock=null;A.pin="";A.err="";try{parent.postMessage({pm:"exit"},location.origin)}catch(e){}render()}
     else if(a=="exit"){try{parent.postMessage({pm:"exit"},location.origin)}catch(e){}}
-    else if(a=="lock"){A.locked=true;A.pin="";A.err="";A.sel=null;A.view="waiting";A.done=[];render()}
+    else if(a=="lock"){A.locked=true;persist();A.pin="";A.err="";A.sel=null;A.view="waiting";A.done=[];render()}
     else if(a=="serve")setStatus(act.dataset.id,"serving");
     else if(a=="done")setStatus(act.dataset.id,"done");
     else if(a=="openban"){$("ban").classList.remove("show");A.tab="inbox";A.pin="";render()}
@@ -313,15 +316,19 @@ document.addEventListener("change",e=>{
 });
 document.addEventListener("keydown",e=>{
   if(A.finder)return;
+  if(e.target&&e.target.id=="pw")return;
   if(A.token&&!(A.locked&&A.tab=="inbox"))return;
   if(/^\d$/.test(e.key)&&A.pin.length<6){A.pin+=e.key;A.err="";const d=document.querySelectorAll(".dots i");d.forEach((x,i)=>x.classList.toggle("f",i<A.pin.length));if(A.pin.length==6)login()}
   else if(e.key=="Backspace"){A.pin=A.pin.slice(0,-1);const d=document.querySelectorAll(".dots i");d.forEach((x,i)=>x.classList.toggle("f",i<A.pin.length))}
   else if(e.key=="Enter")login();
 });
+document.addEventListener("submit",e=>{if(e.target.id!="pf")return;e.preventDefault();const pw=$("pw");if(pw)A.pin=pw.value.replace(/\D/g,"").slice(0,12);login()});
+document.addEventListener("input",e=>{if(!e.target||e.target.id!="pw")return;A.pin=e.target.value.replace(/\D/g,"").slice(0,12);A.err="";const d=document.querySelectorAll(".dots i");d.forEach((x,i)=>x.classList.toggle("f",i<A.pin.length));if(!e.inputType&&A.pin.length>=4)login()});
 ["pointerdown","keydown","touchstart"].forEach(t=>document.addEventListener(t,()=>{A.lastTouch=Date.now()},{passive:true}));
 /* touches inside the menu iframe do not reach this page, so poll the iframe's activity through focus + a gentle timer */
 setInterval(()=>{
-  if(A.token&&!A.locked&&Date.now()-A.lastTouch>LOCK_AFTER&&A.tab=="inbox"){A.locked=true;A.sel=null;A.pin="";A.view="waiting";A.done=[];render()}
+  if(A.token&&!A.locked&&Date.now()-A.lastTouch>LOCK_AFTER&&A.tab=="inbox"){A.locked=true;persist();A.sel=null;A.pin="";A.view="waiting";A.done=[];render()}
+  if(A.token&&!A.locked&&Date.now()-lastSave>60000)persist();
   if(A.token&&!A.locked&&A.tab=="inbox"){const q=$("ql");if(q)q.innerHTML=listHTML()}
 },30000);
 setInterval(poll,POLL);
@@ -329,7 +336,7 @@ document.addEventListener("visibilitychange",()=>{if(!document.hidden)poll()});
 
 /* shared logo path, defined once */
 document.body.insertAdjacentHTML("afterbegin",`<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><g id="lg" fill="currentColor"><path d="M462 60l12-5 129 295-82 20zM676 347L708 0h14l34 347zM968 60l-12-5-128 295 82 20z"/><circle cx="581" cy="452" r="47"/><circle cx="715" cy="440" r="47"/><circle cx="848" cy="452" r="47"/><path fill-rule="evenodd" d="M716 565a716 720 0 1 0 .1 0zM717 794a462 489 0 1 1-.1 0z"/></g></defs></svg>`);
-render();
+render();if(A.token)poll();
 </script>
 </body>
 </html>
