@@ -1,15 +1,17 @@
 // Staff move a list along: New -> Being served -> Done. Done lists leave the Inbox.
 //   POST /api/order-status {id, status:"serving"|"done"}  (Authorization: Bearer <token>)
-// The order key is built from the token's store, so a tablet can only ever touch its own store's lists.
-const { redis, send, readBody, tokenStore } = require('./_lib');
+// The order key is built from the token's store, so a tablet can only ever touch its own store's lists. The All stores sign-in names the store in the id ("Store|date:number").
+const { redis, send, readBody, tokenStore, ALL, STORES } = require('./_lib');
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return send(res, 405, { ok: false, error: 'POST only' });
-  const store = tokenStore(req);
-  if (!store) return send(res, 401, { ok: false, error: 'locked' });
+  const who = tokenStore(req);
+  if (!who) return send(res, 401, { ok: false, error: 'locked' });
   try {
     const b = await readBody(req);
-    const id = String(b.id || ''), status = String(b.status || '');
+    let id = String(b.id || ''), store = who;
+    const status = String(b.status || '');
+    if (who === ALL) { const k = id.indexOf('|'); store = k < 0 ? '' : id.slice(0, k); id = k < 0 ? '' : id.slice(k + 1); if (!STORES.includes(store)) return send(res, 400, { ok: false, error: 'bad request' }); }
     if (!/^\d{4}-\d{2}-\d{2}:\d{1,6}$/.test(id) || !['serving', 'done'].includes(status)) return send(res, 400, { ok: false, error: 'bad request' });
     const key = `pm:o:${store}:${id}`;
     const cur = await redis(['GET', key]);

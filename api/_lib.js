@@ -7,6 +7,7 @@
 const crypto = require('crypto');
 
 const STORES = ['CFC', 'Point 90', 'City Centre Almaza', 'City Stars', 'Mall Of Egypt', 'Mall Of Arabia', 'CC Alexandria'];
+const ALL = 'All stores'; // the head-office sign-in: sees every store's lists
 const RETAIN_SECONDS = 30 * 24 * 3600; // submitted lists are kept 30 days, then Redis deletes them
 const SESSION_MS = 12 * 3600 * 1000;
 
@@ -58,7 +59,7 @@ function pinStore(password, store) {
   let found = null;
   for (const [name, p] of Object.entries(map)) { // check every entry so timing does not reveal anything
     const b = Buffer.from(String(p).trim());
-    if (a.length === b.length && crypto.timingSafeEqual(a, b) && name === store && STORES.includes(name)) found = name;
+    if (a.length === b.length && crypto.timingSafeEqual(a, b) && name === store && (name === ALL || STORES.includes(name))) found = name;
   }
   return found;
 }
@@ -78,7 +79,7 @@ function tokenStore(req) {
   if (want.length !== got.length || !crypto.timingSafeEqual(want, got)) return null;
   try {
     const d = JSON.parse(Buffer.from(p, 'base64url').toString('utf8'));
-    return d.e > Date.now() && STORES.includes(d.s) ? d.s : null;
+    return d.e > Date.now() && (d.s === ALL || STORES.includes(d.s)) ? d.s : null;
   } catch (e) { return null; }
 }
 
@@ -104,4 +105,7 @@ function finderOk(req) {
 
 const pad3 = n => String(n).padStart(3, '0');
 
-module.exports = { STORES, RETAIN_SECONDS, cairoDate, redis, redisConf, send, readBody, ip, pinStore, makeToken, tokenStore, pad3, finderPasswordOk, makeFinderToken, finderOk };
+// Stores a token may look at: its own store, or every store for the All stores sign-in.
+const scope = store => store === ALL ? STORES : [store];
+
+module.exports = { ALL, scope, STORES, RETAIN_SECONDS, cairoDate, redis, redisConf, send, readBody, ip, pinStore, makeToken, tokenStore, pad3, finderPasswordOk, makeFinderToken, finderOk };
