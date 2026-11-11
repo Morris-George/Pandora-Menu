@@ -2,7 +2,7 @@
 //
 // Env vars (Vercel):
 //   KV_REST_API_URL + KV_REST_API_TOKEN   (or UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN) - Upstash Redis, added from the Vercel Marketplace
-//   STAFF_PINS    JSON object, store name -> PIN, e.g. {"City Stars":"482913",...}. Every PIN must be different: the PIN decides which store a tablet sees.
+//   STAFF_PINS    JSON object, store name -> password, e.g. {"City Stars":"482913",...}. Staff pick their store and type its password; it can be numbers, letters or both.
 //   STAFF_SECRET  long random string used to sign staff session tokens
 const crypto = require('crypto');
 
@@ -50,14 +50,15 @@ async function readBody(req) {
 
 const ip = req => String((req.headers['x-forwarded-for'] || '').split(',')[0] || req.socket && req.socket.remoteAddress || 'x').trim();
 
-// ---- staff PINs and signed session tokens ----
-function pinStore(pin) {
+// ---- staff passwords and signed session tokens ----
+// Staff choose their store and type that store's password. Returns the store if the password is right for it, else null.
+function pinStore(password, store) {
   let map; try { map = JSON.parse(process.env.STAFF_PINS || '{}'); } catch (e) { return null; }
-  const a = Buffer.from(String(pin));
+  const a = Buffer.from(String(password));
   let found = null;
-  for (const [store, p] of Object.entries(map)) { // check every entry so timing does not reveal which PIN was close
-    const b = Buffer.from(String(p));
-    if (a.length === b.length && crypto.timingSafeEqual(a, b) && STORES.includes(store)) found = store;
+  for (const [name, p] of Object.entries(map)) { // check every entry so timing does not reveal anything
+    const b = Buffer.from(String(p).trim());
+    if (a.length === b.length && crypto.timingSafeEqual(a, b) && name === store && STORES.includes(name)) found = name;
   }
   return found;
 }

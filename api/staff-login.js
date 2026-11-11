@@ -1,6 +1,6 @@
-// Staff PIN check. The PIN belongs to one store, so it also decides which store's orders the tablet can see.
-//   POST /api/staff-login {pin}  ->  {ok, store, token}
-// After 5 wrong PINs from one address the address is paused for 5 minutes.
+// Staff sign-in: the store is chosen from a list and its password is typed.
+//   POST /api/staff-login {store, password}  ->  {ok, store, token}
+// After 5 wrong tries from one address the address is paused for 5 minutes.
 const { redis, send, readBody, ip, pinStore, makeToken } = require('./_lib');
 
 module.exports = async function handler(req, res) {
@@ -9,18 +9,18 @@ module.exports = async function handler(req, res) {
   try {
     const fk = 'pm:pinfail:' + ip(req);
     const fails = Number(await redis(['GET', fk])) || 0;
-    if (fails >= 5) return send(res, 429, { ok: false, error: 'Too many wrong PINs. Try again in 5 minutes.' });
+    if (fails >= 5) return send(res, 429, { ok: false, error: 'Too many wrong tries. Try again in 5 minutes.' });
     const b = await readBody(req);
-    const pin = String(b.pin || '').replace(/\D/g, '').slice(0, 12);
-    const store = pin ? pinStore(pin) : null;
+    const password = String(b.password == null ? '' : b.password).trim().slice(0, 200);
+    const store = password ? pinStore(password, String(b.store || '').slice(0, 60)) : null;
     if (!store) {
       const n = await redis(['INCR', fk]);
       if (n === 1) await redis(['EXPIRE', fk, 300]);
-      return send(res, 401, { ok: false, error: 'Wrong PIN.' });
+      return send(res, 401, { ok: false, error: 'Wrong store or password.' });
     }
     await redis(['DEL', fk]);
     return send(res, 200, { ok: true, store, token: makeToken(store) });
   } catch (e) {
-    return send(res, e.status || 502, { ok: false, error: 'Could not check the PIN. Try again.' });
+    return send(res, e.status || 502, { ok: false, error: 'Could not sign in. Try again.' });
   }
 };
